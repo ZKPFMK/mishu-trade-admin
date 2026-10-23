@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none" role="img" aria-label="密数科技">
+<title>密数科技</title>
+<defs><linearGradient id="fv-tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#151518"/><stop offset="1" stop-color="#0a0a0b"/></linearGradient>
+  <radialGradient id="fv-glow" cx="32" cy="26.88" r="35.2" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#c8ff3d" stop-opacity=".10"/><stop offset=".6" stop-color="#c8ff3d" stop-opacity=".03"/><stop offset="1" stop-color="#c8ff3d" stop-opacity="0"/></radialGradient></defs>
+  <rect x="0" y="0" width="64" height="64" rx="16" fill="url(#fv-tile)"/>
+
+  <rect x="0.384" y="0.384" width="63.232" height="63.232" rx="15.616" stroke="#fff" stroke-opacity=".08" stroke-width="0.768"/>
+  <g transform="translate(0 0) scale(1)"><defs>
+    <linearGradient id="fv-m-g" x1="16" y1="16" x2="48" y2="48" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#c8ff3d"/><stop offset="1" stop-color="#3dd6ff"/></linearGradient>
+    <mask id="fv-m-k" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64"><rect width="64" height="64" fill="#fff"/><circle cx="32" cy="32" r="7.8" fill="#000"/></mask>
+  </defs>
+  <g fill="none" stroke="#ededf0" stroke-opacity="0.86" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18 V6 H18"/><path d="M46 6 H58 V18"/><path d="M58 46 V58 H46"/><path d="M18 58 H6 V46"/></g>
+
+  <path d="M20 44 V20 L32 32 L44 20 V44" fill="none" stroke="url(#fv-m-g)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" mask="url(#fv-m-k)"/>
+  <circle cx="32" cy="32" r="5.6" fill="#ff3d8b"/></g>
+</svg>

@@ -1,0 +1,4276 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "MiShu Trade Admin",
+    "version": "0.1.0",
+    "description": "Runtime-validated ingress schemas. Administrative body details and source responsibilities are documented in docs/source-contract.md. SourceCommand is the source-side mock contract; real source execution is disabled."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8920"
+    }
+  ],
+  "paths": {
+    "/v1/events/batches": {
+      "post": {
+        "summary": "Persist up to 100 events; per-event duplicate/conflict result. Acceptance is not application.",
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventBatch"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/events/{event_id}": {
+      "get": {
+        "summary": "Query event state for the credential application.",
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/v1/imports": {
+      "post": {
+        "summary": "Queue a first consistent snapshot import (maximum 50 MiB).",
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Snapshot"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/imports/{id}": {
+      "get": {
+        "summary": "Query import validation and activation state.",
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/v1/sync/status": {
+      "get": {
+        "summary": "Read received/applied checkpoint and event backlog.",
+        "security": [
+          {
+            "serviceToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/overview": {
+      "get": {
+        "summary": "Read overview",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/trades": {
+      "get": {
+        "summary": "Read trades",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/accounts": {
+      "get": {
+        "summary": "Read accounts",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/journal-transactions": {
+      "get": {
+        "summary": "Read journal-transactions",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/settlements": {
+      "get": {
+        "summary": "Read settlements",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/generation-jobs": {
+      "get": {
+        "summary": "Read generation-jobs",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/operation-requests": {
+      "get": {
+        "summary": "Read operation-requests",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create operation-requests",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OperationRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/cases": {
+      "get": {
+        "summary": "Read cases",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create cases",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reconciliation-runs": {
+      "get": {
+        "summary": "Read reconciliation-runs",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create reconciliation-runs",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationJob"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reconciliation-findings": {
+      "get": {
+        "summary": "Read reconciliation-findings",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/exports": {
+      "get": {
+        "summary": "Read exports",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Queue a scoped export; request also requires application_id",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExportRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/applications": {
+      "get": {
+        "summary": "Read applications",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/operators": {
+      "get": {
+        "summary": "Read operators",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create operators",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OperatorCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/audit-events": {
+      "get": {
+        "summary": "Read audit-events",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/events": {
+      "get": {
+        "summary": "Read events",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/event-conflicts": {
+      "get": {
+        "summary": "Read event-conflicts",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/imports": {
+      "get": {
+        "summary": "Read imports",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create imports",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplicationJob"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/credentials": {
+      "get": {
+        "summary": "Read credentials",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Create credentials",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CredentialCreate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/trades/{id}": {
+      "get": {
+        "summary": "Order detail with complete journal, escrow and operations",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/operation-requests/{id}/approve": {
+      "post": {
+        "summary": "approve immutable operation (reason required)",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Decision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/operation-requests/{id}/reject": {
+      "post": {
+        "summary": "reject immutable operation (reason required)",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Decision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/operation-requests/{id}/cancel": {
+      "post": {
+        "summary": "cancel immutable operation (reason required)",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Decision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/exports/{id}/cancel": {
+      "post": {
+        "summary": "cancel own export",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/exports/{id}/retry": {
+      "post": {
+        "summary": "retry own export",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/exports/{id}/files/{name}": {
+      "get": {
+        "summary": "Native authenticated attachment; revalidates owner, scope and expiry",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/cases/{id}": {
+      "post": {
+        "summary": "Claim, append note, or close owned case",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseUpdate"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/reconciliation-findings/{id}/claim": {
+      "post": {
+        "summary": "Claim an unresolved finding",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/events/{id}/retry": {
+      "post": {
+        "summary": "Replay quarantined/blocked event (application_id query required)",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/event-conflicts/{id}/resolve": {
+      "post": {
+        "summary": "Record reasoned conflict review without overwriting the original event",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Decision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/operators/{id}/access": {
+      "post": {
+        "summary": "Enable/disable scoped operator and revoke active sessions",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OperatorAccess"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/credentials/{id}/revoke": {
+      "post": {
+        "summary": "Revoke service credential",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Login and set an HttpOnly same-site session cookie",
+        "security": [],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Login"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/me": {
+      "get": {
+        "summary": "Current operator and CSRF token",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Revoke current session",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/auth/password": {
+      "post": {
+        "summary": "Change password and revoke all operator sessions",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChange"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "serviceToken": {
+        "type": "http",
+        "scheme": "bearer"
+      },
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "trade_session"
+      },
+      "csrfToken": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "X-CSRF-Token"
+      }
+    },
+    "schemas": {
+      "Event": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": "number",
+            "const": 1
+          },
+          "event_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "source_cursor": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "previous_cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "bundle": {
+            "type": "object",
+            "properties": {
+              "trades": {
+                "maxItems": 10000,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "version": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "allOf": [
+                        {
+                          "pattern": "^(0|-?[1-9]\\d*)$"
+                        },
+                        {
+                          "pattern": "^[1-9]\\d*$"
+                        }
+                      ],
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "asset_id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "asset_title": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "buyer_id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "seller_id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "price": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "allOf": [
+                        {
+                          "pattern": "^(0|-?[1-9]\\d*)$"
+                        },
+                        {
+                          "pattern": "^[1-9]\\d*$"
+                        }
+                      ],
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "unit": {
+                      "type": "string",
+                      "const": "CREDIT"
+                    },
+                    "payment_mode": {
+                      "type": "string",
+                      "const": "simulated"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "FUNDED",
+                        "DELIVERED",
+                        "DISPUTED",
+                        "COMPLETED",
+                        "REFUNDED",
+                        "RESOLVED_BUYER",
+                        "RESOLVED_SELLER"
+                      ]
+                    },
+                    "license_type": {
+                      "type": "string",
+                      "enum": [
+                        "ownership",
+                        "license"
+                      ]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "settled_at": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "refunded_at": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "delivery_verified": {
+                      "type": "boolean"
+                    },
+                    "timeline": {
+                      "maxItems": 200,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "maxLength": 60
+                          },
+                          "at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "note": {
+                            "type": "string",
+                            "maxLength": 1000
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "at",
+                          "note"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "version",
+                    "asset_id",
+                    "asset_title",
+                    "buyer_id",
+                    "seller_id",
+                    "price",
+                    "unit",
+                    "payment_mode",
+                    "status",
+                    "license_type",
+                    "created_at",
+                    "updated_at",
+                    "settled_at",
+                    "refunded_at",
+                    "delivery_verified",
+                    "timeline"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "accounts": {
+                "maxItems": 50000,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "version": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "allOf": [
+                        {
+                          "pattern": "^(0|-?[1-9]\\d*)$"
+                        },
+                        {
+                          "pattern": "^[1-9]\\d*$"
+                        }
+                      ],
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "owner_id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "user",
+                        "escrow",
+                        "generation_hold",
+                        "platform",
+                        "external"
+                      ]
+                    },
+                    "balance": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "pattern": "^(0|-?[1-9]\\d*)$",
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "opening_balance": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "pattern": "^(0|-?[1-9]\\d*)$",
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "unit": {
+                      "type": "string",
+                      "const": "CREDIT"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "version",
+                    "owner_id",
+                    "kind",
+                    "balance",
+                    "opening_balance",
+                    "unit"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "journals": {
+                "maxItems": 50000,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "topup",
+                        "grant",
+                        "fund",
+                        "settle",
+                        "refund",
+                        "generation_hold",
+                        "generation_settle",
+                        "generation_refund"
+                      ]
+                    },
+                    "reference_id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "unit": {
+                      "type": "string",
+                      "const": "CREDIT"
+                    },
+                    "payment_mode": {
+                      "type": "string",
+                      "const": "simulated"
+                    },
+                    "occurred_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "entries": {
+                      "minItems": 2,
+                      "maxItems": 1000,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                          },
+                          "account_id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                          },
+                          "amount": {
+                            "type": "string",
+                            "maxLength": 20,
+                            "pattern": "^(0|-?[1-9]\\d*)$",
+                            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "buyer",
+                              "seller",
+                              "fee",
+                              "creator_royalty",
+                              "upstream_royalty",
+                              "escrow",
+                              "generation",
+                              "other"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "account_id",
+                          "amount",
+                          "role"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "rule_version": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 100
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "reference_id",
+                    "unit",
+                    "payment_mode",
+                    "occurred_at",
+                    "entries",
+                    "rule_version"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "jobs": {
+                "maxItems": 10000,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "version": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "allOf": [
+                        {
+                          "pattern": "^(0|-?[1-9]\\d*)$"
+                        },
+                        {
+                          "pattern": "^[1-9]\\d*$"
+                        }
+                      ],
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "user_id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "held",
+                        "settled",
+                        "refunded"
+                      ]
+                    },
+                    "held": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "allOf": [
+                        {
+                          "pattern": "^(0|-?[1-9]\\d*)$"
+                        },
+                        {
+                          "pattern": "^[1-9]\\d*$"
+                        }
+                      ],
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "charged": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "pattern": "^(0|-?[1-9]\\d*)$",
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "version",
+                    "user_id",
+                    "status",
+                    "held",
+                    "charged",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "trades",
+              "accounts",
+              "journals",
+              "jobs"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "schema_version",
+          "event_id",
+          "source_cursor",
+          "previous_cursor",
+          "occurred_at",
+          "bundle"
+        ],
+        "additionalProperties": false
+      },
+      "Snapshot": {
+        "type": "object",
+        "properties": {
+          "schema_version": {
+            "type": "number",
+            "const": 1
+          },
+          "snapshot_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "history": {
+            "type": "string",
+            "const": "full"
+          },
+          "bundle": {
+            "type": "object",
+            "properties": {
+              "trades": {
+                "maxItems": 10000,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "version": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "allOf": [
+                        {
+                          "pattern": "^(0|-?[1-9]\\d*)$"
+                        },
+                        {
+                          "pattern": "^[1-9]\\d*$"
+                        }
+                      ],
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "asset_id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "asset_title": {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    "buyer_id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "seller_id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "price": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "allOf": [
+                        {
+                          "pattern": "^(0|-?[1-9]\\d*)$"
+                        },
+                        {
+                          "pattern": "^[1-9]\\d*$"
+                        }
+                      ],
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "unit": {
+                      "type": "string",
+                      "const": "CREDIT"
+                    },
+                    "payment_mode": {
+                      "type": "string",
+                      "const": "simulated"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "FUNDED",
+                        "DELIVERED",
+                        "DISPUTED",
+                        "COMPLETED",
+                        "REFUNDED",
+                        "RESOLVED_BUYER",
+                        "RESOLVED_SELLER"
+                      ]
+                    },
+                    "license_type": {
+                      "type": "string",
+                      "enum": [
+                        "ownership",
+                        "license"
+                      ]
+                    },
+                    "created_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "settled_at": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "refunded_at": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "delivery_verified": {
+                      "type": "boolean"
+                    },
+                    "timeline": {
+                      "maxItems": 200,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "type": "string",
+                            "maxLength": 60
+                          },
+                          "at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "note": {
+                            "type": "string",
+                            "maxLength": 1000
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "at",
+                          "note"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "version",
+                    "asset_id",
+                    "asset_title",
+                    "buyer_id",
+                    "seller_id",
+                    "price",
+                    "unit",
+                    "payment_mode",
+                    "status",
+                    "license_type",
+                    "created_at",
+                    "updated_at",
+                    "settled_at",
+                    "refunded_at",
+                    "delivery_verified",
+                    "timeline"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "accounts": {
+                "maxItems": 50000,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "version": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "allOf": [
+                        {
+                          "pattern": "^(0|-?[1-9]\\d*)$"
+                        },
+                        {
+                          "pattern": "^[1-9]\\d*$"
+                        }
+                      ],
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "owner_id": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "user",
+                        "escrow",
+                        "generation_hold",
+                        "platform",
+                        "external"
+                      ]
+                    },
+                    "balance": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "pattern": "^(0|-?[1-9]\\d*)$",
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "opening_balance": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "pattern": "^(0|-?[1-9]\\d*)$",
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "unit": {
+                      "type": "string",
+                      "const": "CREDIT"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "version",
+                    "owner_id",
+                    "kind",
+                    "balance",
+                    "opening_balance",
+                    "unit"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "journals": {
+                "maxItems": 50000,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "topup",
+                        "grant",
+                        "fund",
+                        "settle",
+                        "refund",
+                        "generation_hold",
+                        "generation_settle",
+                        "generation_refund"
+                      ]
+                    },
+                    "reference_id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "unit": {
+                      "type": "string",
+                      "const": "CREDIT"
+                    },
+                    "payment_mode": {
+                      "type": "string",
+                      "const": "simulated"
+                    },
+                    "occurred_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    },
+                    "entries": {
+                      "minItems": 2,
+                      "maxItems": 1000,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                          },
+                          "account_id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                          },
+                          "amount": {
+                            "type": "string",
+                            "maxLength": 20,
+                            "pattern": "^(0|-?[1-9]\\d*)$",
+                            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                          },
+                          "role": {
+                            "type": "string",
+                            "enum": [
+                              "buyer",
+                              "seller",
+                              "fee",
+                              "creator_royalty",
+                              "upstream_royalty",
+                              "escrow",
+                              "generation",
+                              "other"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "account_id",
+                          "amount",
+                          "role"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "rule_version": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 100
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "kind",
+                    "reference_id",
+                    "unit",
+                    "payment_mode",
+                    "occurred_at",
+                    "entries",
+                    "rule_version"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "jobs": {
+                "maxItems": 10000,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "version": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "allOf": [
+                        {
+                          "pattern": "^(0|-?[1-9]\\d*)$"
+                        },
+                        {
+                          "pattern": "^[1-9]\\d*$"
+                        }
+                      ],
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "user_id": {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "held",
+                        "settled",
+                        "refunded"
+                      ]
+                    },
+                    "held": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "allOf": [
+                        {
+                          "pattern": "^(0|-?[1-9]\\d*)$"
+                        },
+                        {
+                          "pattern": "^[1-9]\\d*$"
+                        }
+                      ],
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "charged": {
+                      "type": "string",
+                      "maxLength": 20,
+                      "pattern": "^(0|-?[1-9]\\d*)$",
+                      "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                    },
+                    "updated_at": {
+                      "type": "string",
+                      "format": "date-time",
+                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "version",
+                    "user_id",
+                    "status",
+                    "held",
+                    "charged",
+                    "updated_at"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "trades",
+              "accounts",
+              "journals",
+              "jobs"
+            ],
+            "additionalProperties": false
+          },
+          "checksum": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "schema_version",
+          "snapshot_id",
+          "cursor",
+          "created_at",
+          "history",
+          "bundle",
+          "checksum"
+        ],
+        "additionalProperties": false
+      },
+      "EventBatch": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "minItems": 1,
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "schema_version": {
+                  "type": "number",
+                  "const": 1
+                },
+                "event_id": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                },
+                "source_cursor": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                },
+                "previous_cursor": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "occurred_at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "bundle": {
+                  "type": "object",
+                  "properties": {
+                    "trades": {
+                      "maxItems": 10000,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                          },
+                          "version": {
+                            "type": "string",
+                            "maxLength": 20,
+                            "allOf": [
+                              {
+                                "pattern": "^(0|-?[1-9]\\d*)$"
+                              },
+                              {
+                                "pattern": "^[1-9]\\d*$"
+                              }
+                            ],
+                            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                          },
+                          "asset_id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                          },
+                          "asset_title": {
+                            "type": "string",
+                            "maxLength": 500
+                          },
+                          "buyer_id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                          },
+                          "seller_id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                          },
+                          "price": {
+                            "type": "string",
+                            "maxLength": 20,
+                            "allOf": [
+                              {
+                                "pattern": "^(0|-?[1-9]\\d*)$"
+                              },
+                              {
+                                "pattern": "^[1-9]\\d*$"
+                              }
+                            ],
+                            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                          },
+                          "unit": {
+                            "type": "string",
+                            "const": "CREDIT"
+                          },
+                          "payment_mode": {
+                            "type": "string",
+                            "const": "simulated"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "FUNDED",
+                              "DELIVERED",
+                              "DISPUTED",
+                              "COMPLETED",
+                              "REFUNDED",
+                              "RESOLVED_BUYER",
+                              "RESOLVED_SELLER"
+                            ]
+                          },
+                          "license_type": {
+                            "type": "string",
+                            "enum": [
+                              "ownership",
+                              "license"
+                            ]
+                          },
+                          "created_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "settled_at": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "refunded_at": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "delivery_verified": {
+                            "type": "boolean"
+                          },
+                          "timeline": {
+                            "maxItems": 200,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "status": {
+                                  "type": "string",
+                                  "maxLength": 60
+                                },
+                                "at": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                },
+                                "note": {
+                                  "type": "string",
+                                  "maxLength": 1000
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "at",
+                                "note"
+                              ],
+                              "additionalProperties": false
+                            }
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "version",
+                          "asset_id",
+                          "asset_title",
+                          "buyer_id",
+                          "seller_id",
+                          "price",
+                          "unit",
+                          "payment_mode",
+                          "status",
+                          "license_type",
+                          "created_at",
+                          "updated_at",
+                          "settled_at",
+                          "refunded_at",
+                          "delivery_verified",
+                          "timeline"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "accounts": {
+                      "maxItems": 50000,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                          },
+                          "version": {
+                            "type": "string",
+                            "maxLength": 20,
+                            "allOf": [
+                              {
+                                "pattern": "^(0|-?[1-9]\\d*)$"
+                              },
+                              {
+                                "pattern": "^[1-9]\\d*$"
+                              }
+                            ],
+                            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                          },
+                          "owner_id": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "user",
+                              "escrow",
+                              "generation_hold",
+                              "platform",
+                              "external"
+                            ]
+                          },
+                          "balance": {
+                            "type": "string",
+                            "maxLength": 20,
+                            "pattern": "^(0|-?[1-9]\\d*)$",
+                            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                          },
+                          "opening_balance": {
+                            "type": "string",
+                            "maxLength": 20,
+                            "pattern": "^(0|-?[1-9]\\d*)$",
+                            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                          },
+                          "unit": {
+                            "type": "string",
+                            "const": "CREDIT"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "version",
+                          "owner_id",
+                          "kind",
+                          "balance",
+                          "opening_balance",
+                          "unit"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "journals": {
+                      "maxItems": 50000,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "topup",
+                              "grant",
+                              "fund",
+                              "settle",
+                              "refund",
+                              "generation_hold",
+                              "generation_settle",
+                              "generation_refund"
+                            ]
+                          },
+                          "reference_id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                          },
+                          "unit": {
+                            "type": "string",
+                            "const": "CREDIT"
+                          },
+                          "payment_mode": {
+                            "type": "string",
+                            "const": "simulated"
+                          },
+                          "occurred_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          },
+                          "entries": {
+                            "minItems": 2,
+                            "maxItems": 1000,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                                },
+                                "account_id": {
+                                  "type": "string",
+                                  "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                                },
+                                "amount": {
+                                  "type": "string",
+                                  "maxLength": 20,
+                                  "pattern": "^(0|-?[1-9]\\d*)$",
+                                  "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                                },
+                                "role": {
+                                  "type": "string",
+                                  "enum": [
+                                    "buyer",
+                                    "seller",
+                                    "fee",
+                                    "creator_royalty",
+                                    "upstream_royalty",
+                                    "escrow",
+                                    "generation",
+                                    "other"
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "account_id",
+                                "amount",
+                                "role"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "rule_version": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 100
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "reference_id",
+                          "unit",
+                          "payment_mode",
+                          "occurred_at",
+                          "entries",
+                          "rule_version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "jobs": {
+                      "maxItems": 10000,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                          },
+                          "version": {
+                            "type": "string",
+                            "maxLength": 20,
+                            "allOf": [
+                              {
+                                "pattern": "^(0|-?[1-9]\\d*)$"
+                              },
+                              {
+                                "pattern": "^[1-9]\\d*$"
+                              }
+                            ],
+                            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                          },
+                          "user_id": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "held",
+                              "settled",
+                              "refunded"
+                            ]
+                          },
+                          "held": {
+                            "type": "string",
+                            "maxLength": 20,
+                            "allOf": [
+                              {
+                                "pattern": "^(0|-?[1-9]\\d*)$"
+                              },
+                              {
+                                "pattern": "^[1-9]\\d*$"
+                              }
+                            ],
+                            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                          },
+                          "charged": {
+                            "type": "string",
+                            "maxLength": 20,
+                            "pattern": "^(0|-?[1-9]\\d*)$",
+                            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                          },
+                          "updated_at": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "version",
+                          "user_id",
+                          "status",
+                          "held",
+                          "charged",
+                          "updated_at"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "trades",
+                    "accounts",
+                    "journals",
+                    "jobs"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "schema_version",
+                "event_id",
+                "source_cursor",
+                "previous_cursor",
+                "occurred_at",
+                "bundle"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "additionalProperties": false
+      },
+      "Trade": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 20,
+            "allOf": [
+              {
+                "pattern": "^(0|-?[1-9]\\d*)$"
+              },
+              {
+                "pattern": "^[1-9]\\d*$"
+              }
+            ],
+            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+          },
+          "asset_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "asset_title": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "buyer_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "seller_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "price": {
+            "type": "string",
+            "maxLength": 20,
+            "allOf": [
+              {
+                "pattern": "^(0|-?[1-9]\\d*)$"
+              },
+              {
+                "pattern": "^[1-9]\\d*$"
+              }
+            ],
+            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+          },
+          "unit": {
+            "type": "string",
+            "const": "CREDIT"
+          },
+          "payment_mode": {
+            "type": "string",
+            "const": "simulated"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "FUNDED",
+              "DELIVERED",
+              "DISPUTED",
+              "COMPLETED",
+              "REFUNDED",
+              "RESOLVED_BUYER",
+              "RESOLVED_SELLER"
+            ]
+          },
+          "license_type": {
+            "type": "string",
+            "enum": [
+              "ownership",
+              "license"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "settled_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "refunded_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "delivery_verified": {
+            "type": "boolean"
+          },
+          "timeline": {
+            "maxItems": 200,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "maxLength": 60
+                },
+                "at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "note": {
+                  "type": "string",
+                  "maxLength": 1000
+                }
+              },
+              "required": [
+                "status",
+                "at",
+                "note"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "asset_id",
+          "asset_title",
+          "buyer_id",
+          "seller_id",
+          "price",
+          "unit",
+          "payment_mode",
+          "status",
+          "license_type",
+          "created_at",
+          "updated_at",
+          "settled_at",
+          "refunded_at",
+          "delivery_verified",
+          "timeline"
+        ],
+        "additionalProperties": false
+      },
+      "Journal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "topup",
+              "grant",
+              "fund",
+              "settle",
+              "refund",
+              "generation_hold",
+              "generation_settle",
+              "generation_refund"
+            ]
+          },
+          "reference_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "unit": {
+            "type": "string",
+            "const": "CREDIT"
+          },
+          "payment_mode": {
+            "type": "string",
+            "const": "simulated"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "entries": {
+            "minItems": 2,
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                },
+                "account_id": {
+                  "type": "string",
+                  "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                },
+                "amount": {
+                  "type": "string",
+                  "maxLength": 20,
+                  "pattern": "^(0|-?[1-9]\\d*)$",
+                  "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                },
+                "role": {
+                  "type": "string",
+                  "enum": [
+                    "buyer",
+                    "seller",
+                    "fee",
+                    "creator_royalty",
+                    "upstream_royalty",
+                    "escrow",
+                    "generation",
+                    "other"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "account_id",
+                "amount",
+                "role"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "rule_version": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "reference_id",
+          "unit",
+          "payment_mode",
+          "occurred_at",
+          "entries",
+          "rule_version"
+        ],
+        "additionalProperties": false
+      },
+      "Account": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "version": {
+            "type": "string",
+            "maxLength": 20,
+            "allOf": [
+              {
+                "pattern": "^(0|-?[1-9]\\d*)$"
+              },
+              {
+                "pattern": "^[1-9]\\d*$"
+              }
+            ],
+            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+          },
+          "owner_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "user",
+              "escrow",
+              "generation_hold",
+              "platform",
+              "external"
+            ]
+          },
+          "balance": {
+            "type": "string",
+            "maxLength": 20,
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+          },
+          "opening_balance": {
+            "type": "string",
+            "maxLength": 20,
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+          },
+          "unit": {
+            "type": "string",
+            "const": "CREDIT"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "owner_id",
+          "kind",
+          "balance",
+          "opening_balance",
+          "unit"
+        ],
+        "additionalProperties": false
+      },
+      "SourceCommand": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "type": {
+            "type": "string",
+            "const": "refund_undelivered"
+          },
+          "trade_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "expected_version": {
+            "type": "string",
+            "maxLength": 20,
+            "allOf": [
+              {
+                "pattern": "^(0|-?[1-9]\\d*)$"
+              },
+              {
+                "pattern": "^[1-9]\\d*$"
+              }
+            ],
+            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+          },
+          "amount": {
+            "type": "string",
+            "maxLength": 20,
+            "allOf": [
+              {
+                "pattern": "^(0|-?[1-9]\\d*)$"
+              },
+              {
+                "pattern": "^[1-9]\\d*$"
+              }
+            ],
+            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+          },
+          "buyer_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "command_id",
+          "type",
+          "trade_id",
+          "expected_version",
+          "amount",
+          "buyer_id",
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "ExportRequest": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "enum": [
+              "trades",
+              "accounts",
+              "journal-transactions",
+              "settlements",
+              "generation-jobs"
+            ]
+          },
+          "format": {
+            "default": "auto",
+            "type": "string",
+            "enum": [
+              "auto",
+              "xlsx",
+              "jsonl.gz"
+            ]
+          },
+          "scope": {
+            "default": "filtered",
+            "type": "string",
+            "enum": [
+              "filtered",
+              "page"
+            ]
+          },
+          "fields": {
+            "default": "summary",
+            "type": "string",
+            "enum": [
+              "summary",
+              "detail"
+            ]
+          },
+          "filters": {
+            "default": {
+              "q": "",
+              "status": "",
+              "page": 1,
+              "limit": 25
+            },
+            "type": "object",
+            "properties": {
+              "q": {
+                "default": "",
+                "type": "string",
+                "maxLength": 160
+              },
+              "status": {
+                "default": "",
+                "type": "string",
+                "maxLength": 60
+              },
+              "from": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "to": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "page": {
+                "default": 1,
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1000
+              },
+              "limit": {
+                "default": 25,
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100
+              },
+              "cursor": {
+                "type": "string",
+                "maxLength": 1200
+              }
+            },
+            "required": [
+              "q",
+              "status",
+              "page",
+              "limit"
+            ],
+            "additionalProperties": false
+          },
+          "application_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          }
+        },
+        "required": [
+          "dataset",
+          "format",
+          "scope",
+          "fields",
+          "filters",
+          "application_id"
+        ],
+        "additionalProperties": false
+      },
+      "Login": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "PasswordChange": {
+        "type": "object",
+        "properties": {
+          "current": {
+            "type": "string",
+            "maxLength": 200
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "current",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "OperationRequest": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "trade_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 1000
+          },
+          "idempotency_key": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          }
+        },
+        "required": [
+          "application_id",
+          "trade_id",
+          "reason",
+          "idempotency_key"
+        ],
+        "additionalProperties": false
+      },
+      "Decision": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "ApplicationJob": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          }
+        },
+        "required": [
+          "application_id"
+        ],
+        "additionalProperties": false
+      },
+      "CaseCreate": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "trade_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "note": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "application_id",
+          "title",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "CaseUpdate": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "claim",
+              "note",
+              "close"
+            ]
+          },
+          "note": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "action",
+          "note"
+        ],
+        "additionalProperties": false
+      },
+      "OperatorCreate": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "roles": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "viewer",
+                "operator",
+                "approver",
+                "auditor",
+                "admin"
+              ]
+            }
+          },
+          "scopes": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+            }
+          }
+        },
+        "required": [
+          "email",
+          "name",
+          "roles",
+          "scopes"
+        ],
+        "additionalProperties": false
+      },
+      "OperatorAccess": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "enabled"
+        ],
+        "additionalProperties": false
+      },
+      "CredentialCreate": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "label": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "permissions": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "events:write",
+                "sync:read",
+                "imports:write"
+              ]
+            }
+          }
+        },
+        "required": [
+          "application_id",
+          "label",
+          "permissions"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

@@ -1,0 +1,8 @@
+node_modules
+.git
+.env*
+.local
+data
+apps/admin/dist
+test-results
+*.log
