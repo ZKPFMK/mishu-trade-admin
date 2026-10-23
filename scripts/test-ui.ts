@@ -47,12 +47,85 @@ try {
   await page.screenshot({
     path: path.join(out, "login-dark.png"),
     fullPage: true,
+    animations: "disabled",
   });
   await login(page, "requester");
+  await page.getByText("已实际结算 · CREDIT").waitFor();
+  await page.getByRole("img", { name: "订单状态环形图，共 60 笔" }).waitFor();
+  const distribution = page.getByRole("group", { name: "订单分布统计方式" });
+  await distribution
+    .getByRole("button", { name: "按积分", exact: true })
+    .click();
+  await page.getByRole("img", { name: /订单状态环形图，共 .* 积分/ }).waitFor();
+  const legend = page.getByLabel("订单分布图例").getByRole("button").first();
+  await legend.click();
+  assert.equal(await legend.getAttribute("aria-pressed"), "true");
+  await legend.press("Enter");
+  assert.equal(await legend.getAttribute("aria-pressed"), "false");
+  await distribution
+    .getByRole("button", { name: "按笔数", exact: true })
+    .click();
+  const trend = page.getByRole("group", { name: "交易趋势指标" });
+  await trend.getByRole("button", { name: "笔数", exact: true }).click();
+  const plot = page.getByRole("img", {
+    name: "交易趋势笔数图，左右方向键查看日期",
+  });
+  await plot.focus();
+  await plot.press("Home");
+  await page.getByText("查看趋势数据", { exact: false }).click();
+  assert.equal(
+    await page.locator(".analytics-data-table tbody tr").count(),
+    30,
+  );
+  await page.getByText("查看趋势数据", { exact: false }).click();
+  await trend.getByRole("button", { name: "积分", exact: true }).click();
+  const sevenResponse = page.waitForResponse(
+    (r) =>
+      r.url().includes("/admin/overview?") &&
+      r.url().includes("from=") &&
+      !r
+        .url()
+        .includes(
+          "from=" +
+            new Date(Date.now() + 8 * 3600000 - 29 * 86400000)
+              .toISOString()
+              .slice(0, 10),
+        ),
+  );
+  await page
+    .getByRole("group", { name: "统计时间范围" })
+    .getByRole("button", { name: "近 7 天", exact: true })
+    .click();
+  const seven = await (await sevenResponse).json();
+  assert.equal(seven.range.days, 7);
+  assert.ok(BigInt(seven.orders.count) < 60n);
+  await page.getByRole("img", { name: /订单状态环形图/ }).waitFor();
+  await page.getByLabel("概览开始日期").fill("2040-02-07");
+  await page.getByLabel("概览结束日期").fill("2040-02-01");
+  await page.getByRole("button", { name: "应用日期筛选" }).click();
+  await page
+    .getByRole("alert")
+    .filter({ hasText: "开始日期不能晚于结束日期" })
+    .waitFor();
+  await page.getByLabel("概览开始日期").fill("2040-02-01");
+  await page.getByLabel("概览结束日期").fill("2040-02-07");
+  await page.getByRole("button", { name: "应用日期筛选" }).click();
+  await page.getByRole("img", { name: "订单状态环形图，共 0 笔" }).waitFor();
+  await page.getByText("所选时段暂无成交或退款", { exact: true }).waitFor();
+  await page
+    .getByRole("group", { name: "统计时间范围" })
+    .getByRole("button", { name: "全部", exact: true })
+    .click();
+  await page.getByRole("img", { name: "订单状态环形图，共 60 笔" }).waitFor();
+  await page
+    .getByRole("group", { name: "统计时间范围" })
+    .getByRole("button", { name: "近 30 天", exact: true })
+    .click();
   await page.getByText("已实际结算 · CREDIT").waitFor();
   await page.screenshot({
     path: path.join(out, "overview-dark.png"),
     fullPage: true,
+    animations: "disabled",
   });
   await nav("全部订单");
   await page.getByLabel("跳转页码").fill("2");
@@ -99,6 +172,7 @@ try {
   await page.screenshot({
     path: path.join(out, "approval-dark.png"),
     fullPage: true,
+    animations: "disabled",
   });
   await page.getByRole("button", { name: "新建工单" }).click();
   await page.getByLabel("工单标题").fill("浏览器测试退款情况跟进");
@@ -130,16 +204,28 @@ try {
   await page.locator("details.journal").first().locator("summary").click();
   assert.ok((await page.getByText(/分录合计：0 CREDIT/).count()) > 0);
   await nav("工作概览");
+  await page.getByRole("img", { name: "订单状态环形图，共 60 笔" }).waitFor();
+  assert.equal(
+    await page
+      .getByLabel("订单分布图例")
+      .getByRole("button")
+      .filter({ hasText: "已退款" })
+      .locator("strong")
+      .innerText(),
+    "9",
+  );
   await page.getByRole("button", { name: "切换浅色模式" }).click();
   assert.equal(await page.locator("html").getAttribute("data-theme"), "light");
   await page.screenshot({
     path: path.join(out, "overview-light.png"),
     fullPage: true,
+    animations: "disabled",
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.screenshot({
     path: path.join(out, "overview-mobile.png"),
     fullPage: true,
+    animations: "disabled",
   });
   assert.ok(
     await page.evaluate(
@@ -157,10 +243,11 @@ try {
   await page.screenshot({
     path: path.join(out, "orders-mobile.png"),
     fullPage: true,
+    animations: "disabled",
   });
   assert.deepEqual(pageErrors, []);
   console.log(
-    "Browser checks passed: login, pagination, two-person refund, claim case, automatic refresh, native XLSX download, reconciliation, journals, light/dark/mobile. Screenshots: .local/ui-tests",
+    "Browser checks passed: analytics donuts, metric/date switches, keyboard trend, zero-data state, refreshed distributions, login, pagination, two-person refund, claim case, automatic refresh, native XLSX download, reconciliation, journals, light/dark/mobile. Screenshots: .local/ui-tests",
   );
 } finally {
   stopped = true;

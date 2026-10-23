@@ -205,6 +205,24 @@
             "schema": {
               "type": "string"
             }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "description": "Inclusive Shanghai calendar date (YYYY-MM-DD); omit both for full history",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "description": "Inclusive Shanghai calendar date (YYYY-MM-DD); omit both for full history",
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
           }
         ],
         "responses": {
@@ -223,7 +241,8 @@
           "409": {
             "description": "State/version/idempotency conflict"
           }
-        }
+        },
+        "description": "Orders, state distribution and license types are filtered by order creation time; financial trends, payout components and top assets use journal time. Account balances remain current snapshots. Continuous trend buckets include zero-activity dates and cover the entire range in at most 90 equal-day buckets. Exact integer aggregates are decimal strings. Bounded ranges include the immediately preceding equal-length comparison period. See docs/analytics.md."
       }
     },
     "/admin/trades": {

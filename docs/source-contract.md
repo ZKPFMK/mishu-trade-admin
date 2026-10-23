@@ -130,3 +130,7 @@ MiShu 来源另有 `GET /internal/trade-admin/status` 返回来源标识、游�
 ## 8. 真实来源管理命令
 
 真实业务使用 `/admin/management/*` 和来源 `/internal/trade-admin/management/*`，与旧模拟命令分离。工单、业务指纹、审批、MFA、原子回执及故障恢复契约见 [management.md](management.md)。真实命令已通过隔离 HTTP 及浏览器完整链路验证；不能把旧模拟接口的 `expected_version` 用于真实资金操作。
+
+## 9. 交易分析查询
+
+`GET /admin/overview` 支持 `application_id,from?,to?`，返回连续时间趋势、订单分布、分账、交易类型、作品排行与余额快照。不同图表的时间口径、整数精度与长区间聚合见 [analytics.md](analytics.md)。

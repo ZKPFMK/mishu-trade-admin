@@ -443,6 +443,16 @@ for (const dataset of [
       schema: { type: "integer", minimum: 1, maximum: max },
     });
 }
+for (const field of ["from", "to"])
+  paths["/admin/overview"].get.parameters.push({
+    name: field,
+    in: "query",
+    description:
+      "Inclusive Shanghai calendar date (YYYY-MM-DD); omit both for full history",
+    schema: { type: "string", format: "date" },
+  });
+paths["/admin/overview"].get.description =
+  "Orders, state distribution and license types are filtered by order creation time; financial trends, payout components and top assets use journal time. Account balances remain current snapshots. Continuous trend buckets include zero-activity dates and cover the entire range in at most 90 equal-day buckets. Exact integer aggregates are decimal strings. Bounded ranges include the immediately preceding equal-length comparison period. See docs/analytics.md.";
 const spec = {
   openapi: "3.1.0",
   info: {

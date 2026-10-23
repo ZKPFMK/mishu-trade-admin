@@ -1,3 +1,4 @@
+import { overview } from "../../../packages/core/src/analytics.js";
 import { managementRoutes } from "./management.js";
 import { activeManagement } from "../../../packages/core/src/management.js";
 import { sourceAdapter } from "../../../packages/adapters/src/index.js";
@@ -224,64 +225,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
         from: q.from || undefined,
         to: q.to || undefined,
       });
-    return transaction(db, async (sql) => {
-      await sql.query(
-        "SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY",
-      );
-      const values: any[] = [app],
-        conditions: string[] = [];
-      if (filter.from) {
-        values.push(filter.from + "T00:00:00+08:00");
-        conditions.push(`occurred_at>=$${values.length}::timestamptz`);
-      }
-      if (filter.to) {
-        values.push(filter.to + "T00:00:00+08:00");
-        conditions.push(
-          `occurred_at<$${values.length}::timestamptz+interval '1 day'`,
-        );
-      }
-      const clause = conditions.length
-        ? " AND " + conditions.join(" AND ")
-        : "";
-      const totals = (
-        await sql.query(
-          `SELECT COALESCE(sum(CASE WHEN j.kind='settle' AND e.role='escrow' THEN -e.amount ELSE 0 END),0)::text settled,COALESCE(sum(CASE WHEN j.kind='refund' AND e.role='buyer' THEN e.amount ELSE 0 END),0)::text refunded,COALESCE(sum(CASE WHEN j.kind='settle' AND e.role='fee' THEN e.amount ELSE 0 END),0)::text fees,COALESCE(sum(CASE WHEN j.kind='settle' AND e.role IN ('creator_royalty','upstream_royalty') THEN e.amount ELSE 0 END),0)::text royalties FROM journal_transactions j JOIN journal_entries e ON e.application_id=j.application_id AND e.transaction_id=j.id WHERE j.application_id=$1${clause}`,
-          values,
-        )
-      ).rows[0];
-      const balances = (
-        await sql.query(
-          "SELECT kind,sum(balance)::text balance FROM account_projections WHERE application_id=$1 AND kind IN ('escrow','generation_hold','user') GROUP BY kind",
-          [app],
-        )
-      ).rows;
-      const statuses = (
-        await sql.query(
-          "SELECT status,count(*)::text count FROM trade_projections WHERE application_id=$1 GROUP BY status",
-          [app],
-        )
-      ).rows;
-      const trend = (
-        await sql.query(
-          `SELECT to_char(j.occurred_at AT TIME ZONE 'Asia/Shanghai','YYYY-MM-DD') AS "day",sum(-e.amount)::text amount FROM journal_transactions j JOIN journal_entries e ON e.application_id=j.application_id AND e.transaction_id=j.id WHERE j.application_id=$1 AND j.kind='settle' AND e.role='escrow'${clause} GROUP BY "day" ORDER BY "day" DESC LIMIT 14`,
-          values,
-        )
-      ).rows.reverse();
-      return {
-        application: (
-          await sql.query("SELECT * FROM applications WHERE id=$1", [app])
-        ).rows[0],
-        totals,
-        balances,
-        statuses,
-        trend,
-        unit: "CREDIT",
-        payment_mode: "simulated",
-        timezone: "Asia/Shanghai",
-        basis:
-          "成交、服务费和版税按结算记账时间；退款按退款记账时间；余额为同步截止时点，不受日期筛选影响。",
-      };
-    });
+    return overview(db, app, filter);
   });
   for (const dataset of datasets)
     api.get("/admin/" + dataset, async (req) => {

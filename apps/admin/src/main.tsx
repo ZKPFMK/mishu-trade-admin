@@ -1,3 +1,4 @@
+import { Dashboard } from "./overview";
 import {
   ManagementPanel,
   ManagementDialog,
@@ -326,144 +327,6 @@ function Login({ onLogin }: { onLogin: () => void }) {
       </Panel>
       <footer>密树科技 MiShu · 交易管理</footer>
     </div>
-  );
-}
-function Dashboard({ c }: { c: Context }) {
-  const [range, setRange] = useState({ from: "", to: "" }),
-    r = useResource(
-      c.url(
-        "/admin/overview",
-        Object.fromEntries(Object.entries(range).filter(([, v]) => v)),
-      ),
-    );
-  const d = r.data;
-  return (
-    <>
-      <div className="section-tools">
-        <p className="muted">掌握交易与积分动向</p>
-        <div className="inline">
-          <label className="compact-label">
-            从
-            <input
-              aria-label="概览开始日期"
-              type="date"
-              value={range.from}
-              onChange={(e) => setRange({ ...range, from: e.target.value })}
-            />
-          </label>
-          <label className="compact-label">
-            至
-            <input
-              aria-label="概览结束日期"
-              type="date"
-              value={range.to}
-              onChange={(e) => setRange({ ...range, to: e.target.value })}
-            />
-          </label>
-        </div>
-      </div>
-      <Alert>{r.error}</Alert>
-      {d ? (
-        <>
-          <div className="stats">
-            {[
-              ["成交积分", d.totals.settled, "已实际结算"],
-              ["退回积分", d.totals.refunded, "实际退款分录"],
-              [
-                "托管积分",
-                d.balances.find((b: any) => b.kind === "escrow")?.balance,
-                "当前托管余额",
-              ],
-              [
-                "服务费 / 版税",
-                money(d.totals.fees) + " / " + money(d.totals.royalties),
-                "来源实际分账",
-              ],
-            ].map(([label, value, note], i) => (
-              <div className="stat" key={label}>
-                <div className="stat-label">
-                  {label}
-                  <span>◦</span>
-                </div>
-                <strong>{i === 3 ? value : money(value)}</strong>
-                <small>{note} · CREDIT</small>
-              </div>
-            ))}
-          </div>
-          <div className="two-columns">
-            <Panel
-              title="成交趋势"
-              action={<span className="caption">最近 14 个有成交的日期</span>}
-            >
-              <div className="chart">
-                {d.trend.length ? (
-                  d.trend.map((p: any) => {
-                    const max = d.trend.reduce(
-                      (v: bigint, x: any) =>
-                        BigInt(x.amount) > v ? BigInt(x.amount) : v,
-                      1n,
-                    );
-                    return (
-                      <div
-                        className="bar-column"
-                        key={p.day}
-                        title={p.day + " · " + money(p.amount) + " 积分"}
-                      >
-                        <span>{money(p.amount)}</span>
-                        <div className="bar-track">
-                          <div
-                            className="bar"
-                            style={{
-                              height:
-                                Number((BigInt(p.amount) * 100n) / max) + "%",
-                            }}
-                          />
-                        </div>
-                        <small>{p.day.slice(5)}</small>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <Empty />
-                )}
-              </div>
-            </Panel>
-            <Panel title="订单分布">
-              <div className="status-list">
-                {d.statuses.map((s: any) => (
-                  <div key={s.status}>
-                    <Badge value={s.status} />
-                    <strong>
-                      {money(s.count)} <small>笔</small>
-                    </strong>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-          </div>
-          <Panel title="数据口径">
-            <p className="muted">{d.basis}</p>
-            <div className="facts">
-              <span>
-                计量单位<strong>CREDIT 积分</strong>
-              </span>
-              <span>
-                支付模式<strong>模拟支付</strong>
-              </span>
-              <span>
-                统计时区<strong>Asia/Shanghai</strong>
-              </span>
-              <span>
-                最近应用数据
-                <strong>{date(d.application.last_applied_at)}</strong>
-              </span>
-            </div>
-          </Panel>
-        </>
-      ) : r.loading ? (
-        <Empty>正在加载概览…</Empty>
-      ) : null}
-    </>
   );
 }
 const datasetNames: Record<string, string> = {
@@ -2050,7 +1913,7 @@ function App() {
   const content = () => {
     switch (selected[0]) {
       case "overview":
-        return <Dashboard c={c} />;
+        return <Dashboard key={c.app.id} c={c} />;
       case "operations":
         return <Operations c={c} />;
       case "reconciliation":
