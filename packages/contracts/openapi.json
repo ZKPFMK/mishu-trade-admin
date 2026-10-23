@@ -2196,7 +2196,9 @@
                       "type": "string",
                       "enum": [
                         "ownership",
-                        "license"
+                        "license",
+                        "usage",
+                        "display"
                       ]
                     },
                     "created_at": {
@@ -2326,9 +2328,12 @@
                       "enum": [
                         "user",
                         "escrow",
+                        "license_escrow",
                         "generation_hold",
+                        "lookup_hold",
                         "platform",
-                        "external"
+                        "external",
+                        "other"
                       ]
                     },
                     "balance": {
@@ -2380,7 +2385,14 @@
                         "refund",
                         "generation_hold",
                         "generation_settle",
-                        "generation_refund"
+                        "generation_refund",
+                        "license_hold",
+                        "license_settle",
+                        "license_refund",
+                        "lookup_hold",
+                        "lookup_settle",
+                        "lookup_refund",
+                        "other"
                       ]
                     },
                     "reference_id": {
@@ -2420,6 +2432,14 @@
                             "maxLength": 20,
                             "pattern": "^(0|-?[1-9]\\d*)$",
                             "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                          },
+                          "source_kind": {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          "memo": {
+                            "type": "string",
+                            "maxLength": 8000
                           },
                           "role": {
                             "type": "string",
@@ -2671,7 +2691,9 @@
                       "type": "string",
                       "enum": [
                         "ownership",
-                        "license"
+                        "license",
+                        "usage",
+                        "display"
                       ]
                     },
                     "created_at": {
@@ -2801,9 +2823,12 @@
                       "enum": [
                         "user",
                         "escrow",
+                        "license_escrow",
                         "generation_hold",
+                        "lookup_hold",
                         "platform",
-                        "external"
+                        "external",
+                        "other"
                       ]
                     },
                     "balance": {
@@ -2855,7 +2880,14 @@
                         "refund",
                         "generation_hold",
                         "generation_settle",
-                        "generation_refund"
+                        "generation_refund",
+                        "license_hold",
+                        "license_settle",
+                        "license_refund",
+                        "lookup_hold",
+                        "lookup_settle",
+                        "lookup_refund",
+                        "other"
                       ]
                     },
                     "reference_id": {
@@ -2895,6 +2927,14 @@
                             "maxLength": 20,
                             "pattern": "^(0|-?[1-9]\\d*)$",
                             "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                          },
+                          "source_kind": {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          "memo": {
+                            "type": "string",
+                            "maxLength": 8000
                           },
                           "role": {
                             "type": "string",
@@ -3158,7 +3198,9 @@
                             "type": "string",
                             "enum": [
                               "ownership",
-                              "license"
+                              "license",
+                              "usage",
+                              "display"
                             ]
                           },
                           "created_at": {
@@ -3288,9 +3330,12 @@
                             "enum": [
                               "user",
                               "escrow",
+                              "license_escrow",
                               "generation_hold",
+                              "lookup_hold",
                               "platform",
-                              "external"
+                              "external",
+                              "other"
                             ]
                           },
                           "balance": {
@@ -3342,7 +3387,14 @@
                               "refund",
                               "generation_hold",
                               "generation_settle",
-                              "generation_refund"
+                              "generation_refund",
+                              "license_hold",
+                              "license_settle",
+                              "license_refund",
+                              "lookup_hold",
+                              "lookup_settle",
+                              "lookup_refund",
+                              "other"
                             ]
                           },
                           "reference_id": {
@@ -3382,6 +3434,14 @@
                                   "maxLength": 20,
                                   "pattern": "^(0|-?[1-9]\\d*)$",
                                   "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                                },
+                                "source_kind": {
+                                  "type": "string",
+                                  "maxLength": 100
+                                },
+                                "memo": {
+                                  "type": "string",
+                                  "maxLength": 8000
                                 },
                                 "role": {
                                   "type": "string",
@@ -3603,7 +3663,9 @@
             "type": "string",
             "enum": [
               "ownership",
-              "license"
+              "license",
+              "usage",
+              "display"
             ]
           },
           "created_at": {
@@ -3710,7 +3772,14 @@
               "refund",
               "generation_hold",
               "generation_settle",
-              "generation_refund"
+              "generation_refund",
+              "license_hold",
+              "license_settle",
+              "license_refund",
+              "lookup_hold",
+              "lookup_settle",
+              "lookup_refund",
+              "other"
             ]
           },
           "reference_id": {
@@ -3750,6 +3819,14 @@
                   "maxLength": 20,
                   "pattern": "^(0|-?[1-9]\\d*)$",
                   "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                },
+                "source_kind": {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                "memo": {
+                  "type": "string",
+                  "maxLength": 8000
                 },
                 "role": {
                   "type": "string",
@@ -3834,9 +3911,12 @@
             "enum": [
               "user",
               "escrow",
+              "license_escrow",
               "generation_hold",
+              "lookup_hold",
               "platform",
-              "external"
+              "external",
+              "other"
             ]
           },
           "balance": {

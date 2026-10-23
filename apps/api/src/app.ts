@@ -57,13 +57,11 @@ export async function createApp(db: pg.Pool, cfg: Config) {
         .code(err.status)
         .send({ error: err.code, request_id: req.id });
     if (err instanceof z.ZodError)
-      return reply
-        .code(400)
-        .send({
-          error: "invalid_input",
-          issues: err.issues.map((i) => ({ path: i.path, message: i.message })),
-          request_id: req.id,
-        });
+      return reply.code(400).send({
+        error: "invalid_input",
+        issues: err.issues.map((i) => ({ path: i.path, message: i.message })),
+        request_id: req.id,
+      });
     if (err.code === "23505")
       return reply
         .code(409)
@@ -190,7 +188,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
     const user = await actor(db, req);
     return (
       await db.query(
-        "SELECT a.*,(SELECT count(*)::int FROM event_inbox WHERE application_id=a.id AND state<>'applied') pending_events,(SELECT count(*)::int FROM event_conflicts WHERE application_id=a.id AND resolved_at IS NULL) conflicts FROM applications a WHERE id=ANY($1) ORDER BY created_at",
+        "SELECT a.*,(SELECT count(*)::int FROM event_inbox WHERE application_id=a.id AND state<>'applied') pending_events,(SELECT count(*)::int FROM event_conflicts WHERE application_id=a.id AND resolved_at IS NULL) conflicts FROM applications a WHERE id=ANY($1) ORDER BY (a.source_mode='mishu') DESC,a.created_at,a.id",
         [user.scopes],
       )
     ).rows;

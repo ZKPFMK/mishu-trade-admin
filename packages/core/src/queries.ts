@@ -64,7 +64,7 @@ export function querySpec(
     const p = add(filters.q);
     where.push(
       dataset === "trades"
-        ? `(t.id=${p} OR t.buyer_id=${p} OR t.seller_id=${p} OR t.asset_id=${p})`
+        ? `(t.id=${p} OR t.buyer_id=${p} OR t.seller_id=${p} OR t.asset_id=${p} OR t.document->>'asset_title'=${p})`
         : dataset === "accounts"
           ? `(t.id=${p} OR t.owner_id=${p})`
           : dataset === "journal-transactions" || dataset === "settlements"

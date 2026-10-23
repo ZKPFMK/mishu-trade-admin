@@ -26,7 +26,9 @@
     "operator:create": "tsx scripts/operator-create.ts",
     "backup": "tsx scripts/backup.ts",
     "backup:verify": "tsx scripts/verify-backup.ts",
-    "format": "prettier --write apps packages scripts tests docs *.json *.md"
+    "format": "prettier --write apps packages scripts tests docs *.json *.md",
+    "connect:mishu": "tsx scripts/connect-mishu.ts",
+    "test:mishu": "tsx scripts/test-mishu.ts"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.3",

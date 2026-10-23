@@ -29,7 +29,7 @@ export async function reconcile(db: pg.Pool, app: string, run: string) {
         pending,
         conflicts,
         source_error: a.source_error,
-        rule_version: "v1",
+        rule_version: "v2",
         findings: 0,
       };
     const checks: Array<[string, string]> = [
@@ -59,7 +59,7 @@ export async function reconcile(db: pg.Pool, app: string, run: string) {
       ],
       [
         "generation_postings",
-        `SELECT g.id,COALESCE(sum(CASE WHEN e.account_id='platform:generation' THEN e.amount ELSE 0 END),0)::text actual,g.document->>'charged' expected FROM job_charge_summaries g LEFT JOIN journal_transactions j ON j.application_id=g.application_id AND j.reference_id=g.id AND j.kind LIKE 'generation_%' LEFT JOIN journal_entries e ON e.application_id=j.application_id AND e.transaction_id=j.id WHERE g.application_id=$1 GROUP BY g.application_id,g.id HAVING COALESCE(sum(CASE WHEN e.account_id='platform:generation' THEN e.amount ELSE 0 END),0)<>(g.document->>'charged')::bigint OR COALESCE(sum(CASE WHEN j.kind='generation_hold' AND e.account_id='jobs:hold:'||g.id THEN e.amount ELSE 0 END),0)<>(g.document->>'held')::bigint`,
+        `SELECT g.id,COALESCE(sum(CASE WHEN e.role='generation' AND e.account_id LIKE 'platform:%' THEN e.amount ELSE 0 END),0)::text actual,g.document->>'charged' expected FROM job_charge_summaries g LEFT JOIN journal_transactions j ON j.application_id=g.application_id AND j.reference_id=g.id AND j.kind LIKE 'generation_%' LEFT JOIN journal_entries e ON e.application_id=j.application_id AND e.transaction_id=j.id WHERE g.application_id=$1 GROUP BY g.application_id,g.id HAVING COALESCE(sum(CASE WHEN e.role='generation' AND e.account_id LIKE 'platform:%' THEN e.amount ELSE 0 END),0)<>(g.document->>'charged')::bigint OR COALESCE(sum(CASE WHEN j.kind='generation_hold' AND e.account_id='jobs:hold:'||g.id THEN e.amount ELSE 0 END),0)<>(g.document->>'held')::bigint`,
       ],
     ];
     let count = 0;
@@ -68,7 +68,7 @@ export async function reconcile(db: pg.Pool, app: string, run: string) {
         const detail = {
           ...finding,
           cursor: a.applied_cursor,
-          rule_version: "v1",
+          rule_version: "v2",
         };
         const r = (
           await sql.query(
@@ -91,7 +91,7 @@ export async function reconcile(db: pg.Pool, app: string, run: string) {
       outcome: count ? "differences" : "passed",
       cursor: a.applied_cursor,
       cutoff_at: a.last_applied_at,
-      rule_version: "v1",
+      rule_version: "v2",
       findings: count,
       rules: checks.length,
       unit: "CREDIT",

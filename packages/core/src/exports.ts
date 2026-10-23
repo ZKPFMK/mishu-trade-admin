@@ -68,7 +68,13 @@ function rows(
       e.account_id,
       e.amount,
       e.role,
-      detail ? JSON.stringify({ rule_version: d.rule_version }) : "",
+      detail
+        ? JSON.stringify({
+            rule_version: d.rule_version,
+            source_kind: e.source_kind,
+            memo: e.memo,
+          })
+        : "",
     ]);
   return [[...base, "", "", "", "", detail ? JSON.stringify(d) : ""]];
 }

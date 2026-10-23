@@ -551,6 +551,7 @@ function Journal({ tx }: { tx: any }) {
             <tr>
               <th>账户</th>
               <th>角色</th>
+              <th>来源备注</th>
               <th className="numeric">积分变化</th>
             </tr>
           </thead>
@@ -573,6 +574,10 @@ function Journal({ tx }: { tx: any }) {
                       } as any
                     )[e.role]
                   }
+                </td>
+                <td>
+                  {e.memo || "—"}
+                  <small className="block mono">{e.source_kind || ""}</small>
                 </td>
                 <td
                   className={
@@ -619,9 +624,12 @@ function Detail({
           <div className="detail-hero">
             <div>
               <span className="eyebrow">
-                {t.license_type === "ownership"
-                  ? "资产所有权交易"
-                  : "资产使用许可"}
+                {{
+                  ownership: "资产所有权交易",
+                  usage: "资产使用许可",
+                  display: "资产展示许可",
+                  license: "资产使用许可",
+                }[t.license_type as string] || t.license_type}
               </span>
               <h3>{t.asset_title}</h3>
               <code>{t.id}</code>
@@ -744,7 +752,16 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
           "RESOLVED_SELLER",
         ]
       : dataset === "accounts"
-        ? ["user", "escrow", "generation_hold", "platform", "external"]
+        ? [
+            "user",
+            "escrow",
+            "license_escrow",
+            "generation_hold",
+            "lookup_hold",
+            "platform",
+            "external",
+            "other",
+          ]
         : dataset === "generation-jobs"
           ? ["held", "settled", "refunded"]
           : [
@@ -756,6 +773,13 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
               "generation_hold",
               "generation_settle",
               "generation_refund",
+              "license_hold",
+              "license_settle",
+              "license_refund",
+              "lookup_hold",
+              "lookup_settle",
+              "lookup_refund",
+              "other",
             ];
   return (
     <>
@@ -774,7 +798,11 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
       >
         <input
           aria-label="编号搜索"
-          placeholder="精确搜索编号 / 用户 / 资产"
+          placeholder={
+            dataset === "trades"
+              ? "精确搜索订单 / 用户 / 资产编号或名称"
+              : "精确搜索编号 / 用户 / 关联编号"
+          }
           value={draft.q}
           onChange={(e) => setDraft({ ...draft, q: e.target.value })}
         />
@@ -820,7 +848,13 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
             {datasetNames[dataset]}记录{" "}
             <span className="count">{money(data?.total)}</span>
           </h2>
-          <span className="caption">CREDIT · 模拟数据 · 每 10 秒更新</span>
+          <span className="caption">
+            CREDIT ·{" "}
+            {c.app.source_mode === "mock"
+              ? "模拟演示数据"
+              : "主平台数据 · 只读"}{" "}
+            · 每 10 秒更新
+          </span>
         </div>
         {data?.items?.length ? (
           <div className="table-scroll">
@@ -2036,7 +2070,12 @@ function App() {
                 </option>
               ))}
             </select>
-            <span className="badge">模拟积分</span>
+            <span className="badge">
+              {app?.source_mode === "mishu"
+                ? "主平台数据 · 只读"
+                : "模拟演示数据"}
+            </span>
+            <span className="badge">积分 · 模拟支付</span>
             <span className="caption sync-status">
               <span
                 className={
@@ -2062,7 +2101,9 @@ function App() {
                             new Date(app?.last_poll_at || 0).getTime() >
                           15000
                         ? "同步检查已延迟"
-                        : "数据同步已连接"}{" "}
+                        : app?.source_mode === "mishu"
+                          ? "主平台同步正常"
+                          : "模拟来源同步正常"}{" "}
               · 最近检查 {date(app?.last_poll_at)}
             </span>
           </div>

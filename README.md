@@ -2,7 +2,7 @@
 
 独立于 MiShu 主平台、Prompt 审核服务的交易管理系统。提供订单、积分账户、完整流水、实际分账、生成扣费、对账、工单、双人审批和异步导出。
 
-**当前是可运行的首版：默认使用合成数据的模拟来源。尚未接入正在使用的 MiShu 主平台，也没有修改其数据库或运行流程。真实来源管理命令在代码中关闭。**
+**已支持 MiShu 主平台的 HTTP 只读接入，包括历史导入和持续增量同步。新安装仍默认模拟来源；本地连接后真实数据与演示数据分应用保存。真实来源管理命令在代码中关闭。**
 
 ## 本地启动
 
@@ -44,7 +44,7 @@ npm run dev:admin
 
 ## 当前可以测试什么
 
-1. **订单查询**：编号、用户、资产精确搜索，状态和日期筛选；页码跳转、游标翻页和订单时间线。
+1. **订单查询**：编号、用户、资产编号或完整名称精确搜索，状态和日期筛选；页码跳转、游标翻页和订单时间线。
 2. **账目查看**：用户余额、托管、生成冻结；按记账事务展开完整分录，查看实际分账与版税。
 3. **模拟退款闭环**：管理账号打开托管中订单（如 `trade_00005`），填写退款理由；用审批账号审批。Worker 向模拟来源执行，由来源原子记账和写入事件，再同步回来。页面自动更新。
 4. **异常工单**：新建、领取、追加说明、关闭；领取会明确显示处理人。
@@ -61,13 +61,14 @@ npm run dev:admin
 npm run build
 npm test
 npm run test:ui
+npm run test:mishu -- /absolute/path/to/mishu-platform
 ```
 
 测试创建随机 PostgreSQL Schema 和临时文件夹，结束后删除；不会操作本地演示数据或其他系统数据。浏览器测试需要 Chromium；非当前机器可设置 `CHROMIUM_PATH`。截图在 `.local/ui-tests/`。
 
 ## 接入真实平台
 
-通过配置 `SOURCE_MODE=mishu`、`SOURCE_URL`、`SOURCE_READ_TOKEN` 启用 HTTP 只读适配器。**来源平台需要先提供约定接口；设置地址本身不会自动接管现有平台。** 来源必须先建立事务发件箱，再生成一致快照，提供对象版本和完整事务分录。
+主平台已实现专用读取端点和事务内变动跟踪。运行 `npm run connect:mishu -- --platform /absolute/path/to/mishu-platform` 配置来源，再重启两端并执行 `npm run connect:mishu -- --import` 导入历史。完整步骤见 [本地接入说明](docs/mishu-local.md)。后台默认优先显示主平台应用，按约 2 秒间隔同步新变化。
 
 接入契约见 [source-contract.md](docs/source-contract.md)，当前边界和后续工作见 [acceptance.md](docs/acceptance.md)。不直接读取或写入 MiShu SQLite，不从相邻仓库导入运行时代码。
 

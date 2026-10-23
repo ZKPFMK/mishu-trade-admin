@@ -1,6 +1,6 @@
 # 来源接入与 API 契约（v1）
 
-后台默认运行独立模拟来源。下述 HTTP 来源适配器已实现，但当前 MiShu 主平台尚未安装这些接口。**不要把现有用户交易接口、Prompt 审核凭证或 SQLite 路径当作来源接入配置。**
+后台默认运行独立模拟来源；MiShu 主平台已实现下述 HTTP 读取端点，配置与历史导入步骤见 [本地接入](mishu-local.md)。**不要把现有用户交易接口、Prompt 审核凭证或 SQLite 路径当作来源接入配置。**
 
 运行时 Schema 位于 `packages/contracts/src/index.ts`；`npm run openapi` 生成 `packages/contracts/openapi.json`，服务启动后可访问 `/openapi.json`。OpenAPI 列出路由和接入数据 Schema；管理接口的字段说明见本文。金额与版本都是字符串，额外字段会被拒绝。
 
@@ -41,6 +41,10 @@
 
 完整字段以运行时 Schema 为准，不接收资产密钥、封装密文或无关 Prompt。首版固定 `unit=CREDIT`、`payment_mode=simulated`，不会把真实货币误当积分。
 
+订单许可类型保留 `ownership/usage/display`，兼容既有演示 `license`。分录可带原始 `source_kind`、`memo`，详情导出保留这些字段。
+
+许可报价托管 `escrow:lrq_*` 对应 `license_escrow` 及 `license_hold/settle/refund`；检索托管 `lookup:hold:*` 对应 `lookup_hold/settle/refund`。这些流水不计入作品订单成交与退回。生成结算支持原来源账户 `platform:revenue`，按 `generation` 分录角色对账，不改写账户名。
+
 账户命名约定与当前平台一致：`user:<user_id>`、`escrow:<trade_id>`、`jobs:hold:<job_id>`、`platform:*`、`external:*`。接入来源需要按此归一化，否则托管/生成对账规则无法关联。
 
 每个记账事务必须有完整的平衡分录，带稳定事务 ID 和分录 ID；`reference_id` 只是业务关联，不能替代唯一 ID。`seller`、`fee`、`creator_royalty`、`upstream_royalty` 表示实际入账分配。历史规则缺失填写 `rule_version=null`。
@@ -80,9 +84,11 @@
 }
 ```
 
-示例为空包，只展示封套。实际事件必须包含本次业务事务影响的完整订单、账户和新增记账事务；所有受影响账户的版本每个事件加一，订单和任务同理。时间戳不能替代单调版本。新增对象版本从 `"1"` 开始，快照可以从更高版本开始。
+示例为空包，只展示封套。实际事件必须包含本次业务事务影响的完整订单、账户和新增记账事务；每个发布事件中内容变化的账户版本加一，订单和任务同理。若多个业务事务合并后账户净值和其他字段未变，可省略该账户，但新流水必须完整保留。时间戳不能替代单调版本。新增对象版本从 `"1"` 开始，快照可以从更高版本开始。
 
-来源的业务更新、余额和完整分录、对象版本、事件发件箱须在**同一业务事务**提交。后台收到事件时先持久化；Worker 再在一个本地事务内应用。任何验证失败都回滚该事件的全部副本变化。
+来源必须保证变动跟踪与业务更新、余额和完整分录在**同一业务事务**提交。MiShu 使用 SQLite 触发器记录变动编号，再在来源内部的一致事务中合并已提交变动、生成不可变事件并更新读模型版本。合并保留每笔完整记账事务和完整订单时间线；该版本是已发布读模型修订号，不能用于未来资金命令的并发控制。后台收到事件时先持久化；Worker 再在一个本地事务内应用。任何验证失败都回滚该事件的全部副本变化。
+
+MiShu 来源另有 `GET /internal/trade-admin/status` 返回来源标识、游标、计数和只读状态。快照保留 24 小时，事件不自动清理。HTTP 拉取每页最多 100 个事件，单事件及事件内容合计最多 40 MiB；与下述推送端点的 2 MiB 限额不同。
 
 - 相同 ID、相同摘要：幂等重复，不再记账。
 - 相同 ID 或游标、不同摘要：登记冲突，保留原始内容；同一冲突摘要不会无限重复建单。
@@ -95,21 +101,21 @@
 
 ## 6. 后台写入正文
 
-| 路径                                        | 主要字段                                                                                         |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------ | ------- | ---------------------------- |
-| `POST /admin/operation-requests`            | `application_id, trade_id, reason, idempotency_key`；理由 5–1,000 字符，来源决定金额、用户、版本 |
-| `POST /admin/operation-requests/:id/approve | reject                                                                                           | cancel` | `reason`；审批与申请不可同人 |
-| `POST /admin/cases`                         | `application_id, title, note, trade_id?`                                                         |
-| `POST /admin/cases/:id`                     | `action=claim                                                                                    | note    | close, note`；仅领取人可关闭 |
-| `POST /admin/reconciliation-runs`           | `application_id`                                                                                 |
-| `POST /admin/imports`                       | `application_id`，向配置来源请求初始快照                                                         |
-| `POST /admin/exports`                       | `application_id, dataset, format, scope, fields, filters`                                        |
-| `POST /admin/operators`                     | `email, name, roles[], scopes[]`；随机初始密码仅返回一次                                         |
-| `POST /admin/operators/:id/access`          | `enabled`；禁止修改自己，停用会注销会话                                                          |
-| `POST /admin/credentials`                   | `application_id, label, permissions[]`；随机密钥仅返回一次                                       |
-| `POST /admin/event-conflicts/:id/resolve`   | `reason`；只记录核验依据，不覆盖原事件                                                           |
+| 路径                                                         | 主要字段                                                                                         |
+| ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| `POST /admin/operation-requests`                             | `application_id, trade_id, reason, idempotency_key`；理由 5–1,000 字符，来源决定金额、用户、版本 |
+| `POST /admin/operation-requests/:id/{approve,reject,cancel}` | `reason`；审批与申请不可同人                                                                     |
+| `POST /admin/cases`                                          | `application_id, title, note, trade_id?`                                                         |
+| `POST /admin/cases/:id`                                      | `action` 为 claim、note 或 close；`note` 为说明；仅领取人可关闭                                  |
+| `POST /admin/reconciliation-runs`                            | `application_id`                                                                                 |
+| `POST /admin/imports`                                        | `application_id`，向配置来源请求初始快照                                                         |
+| `POST /admin/exports`                                        | `application_id, dataset, format, scope, fields, filters`                                        |
+| `POST /admin/operators`                                      | `email, name, roles[], scopes[]`；随机初始密码仅返回一次                                         |
+| `POST /admin/operators/:id/access`                           | `enabled`；禁止修改自己，停用会注销会话                                                          |
+| `POST /admin/credentials`                                    | `application_id, label, permissions[]`；随机密钥仅返回一次                                       |
+| `POST /admin/event-conflicts/:id/resolve`                    | `reason`；只记录核验依据，不覆盖原事件                                                           |
 
-查询过滤器为 `q`（精确编号、用户或资产）、`status`、`from/to`（上海自然日）、`page`、`limit`、`cursor`。`limit` 1–100，页码直达前 1,000 页，之后继续使用返回的 `next_cursor`。不要在更换筛选时复用旧游标。
+查询过滤器为 `q`（精确编号、用户、资产编号或完整作品名称）、`status`、`from/to`（上海自然日）、`page`、`limit`、`cursor`。`limit` 1–100，页码直达前 1,000 页，之后继续使用返回的 `next_cursor`。不要在更换筛选时复用旧游标。
 
 导出 `dataset=trades|accounts|journal-transactions|settlements|generation-jobs`；`format=auto|xlsx|jsonl.gz`；`scope=filtered|page`；`fields=summary|detail`。流水、分账每条分录占一行，保留完整事务关联。错误返回 `{error,request_id}`，需要纠正输入/状态后再调用，不应把业务拒绝无限重试。
 

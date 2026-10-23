@@ -120,6 +120,7 @@ export const date = (value: unknown) =>
       })
     : "—";
 export const statusNames: Record<string, string> = {
+  CREATED: "已创建",
   FUNDED: "托管中",
   DELIVERED: "待验收",
   DISPUTED: "争议中",
@@ -160,6 +161,14 @@ export const statusNames: Record<string, string> = {
   generation_hold: "生成冻结",
   generation_settle: "生成结算",
   generation_refund: "生成退回",
+  license_escrow: "许可报价托管",
+  license_hold: "许可报价冻结",
+  license_settle: "许可报价结算",
+  license_refund: "许可报价退回",
+  lookup_hold: "私密检索冻结",
+  lookup_settle: "私密检索结算",
+  lookup_refund: "私密检索退回",
+  other: "其他",
   user: "用户可用",
   escrow: "交易托管",
   platform: "平台账户",

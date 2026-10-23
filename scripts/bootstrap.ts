@@ -25,10 +25,9 @@ try {
   await transaction(db, async (sql) => {
     await sql.query("SELECT pg_advisory_xact_lock(89208923)");
     const app = cfg.sourceMode === "mock" ? "mishu_demo" : "mishu_readonly";
-    if (
-      (await sql.query("SELECT 1 FROM applications WHERE id=$1", [app]))
-        .rowCount
-    )
+    // Changing the configured source must not recreate operators or overwrite their credentials.
+    // Existing installations add the read-only application through connect-mishu.ts.
+    if ((await sql.query("SELECT 1 FROM applications LIMIT 1")).rowCount)
       return;
     created = true;
     await sql.query(
