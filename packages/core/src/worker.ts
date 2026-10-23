@@ -150,6 +150,9 @@ export async function runJob(db: pg.Pool, cfg: Config, kinds: string[]) {
 }
 export async function maintenance(db: pg.Pool, cfg: Config) {
   await cleanupExports(db, cfg);
+  await db.query(
+    "UPDATE management_requests SET state='expired',error='request_expired',updated_at=now() WHERE state='pending_approval' AND request_expires_at<now()",
+  );
   await db.query("DELETE FROM sessions WHERE expires_at<now()");
   // Approved/unknown commands are resolved by executeOperation before expiry is considered.
   // Expire pending requests too: stale approvals must be recreated from a fresh source view.

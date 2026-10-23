@@ -4,6 +4,11 @@ x-service: &service
   init: true
   environment: &env
     DATABASE_URL: postgres://trade:${TRADE_DB_PASSWORD:?Set TRADE_DB_PASSWORD}@postgres:5432/trade_admin
+    NODE_ENV: ${NODE_ENV:-production}
+    TRADE_ENCRYPTION_KEY: ${TRADE_ENCRYPTION_KEY:?Set a stable 64-hex encryption key}
+    SOURCE_COMMAND_TOKEN: ${SOURCE_COMMAND_TOKEN:-}
+    MANAGEMENT_ENABLED: ${MANAGEMENT_ENABLED:-0}
+    MANAGEMENT_REQUIRE_MFA: ${MANAGEMENT_REQUIRE_MFA:-1}
     SOURCE_MODE: ${SOURCE_MODE:-mock}
     SOURCE_URL: ${SOURCE_URL:-}
     SOURCE_READ_TOKEN: ${SOURCE_READ_TOKEN:-}
@@ -43,7 +48,13 @@ services:
       bootstrap:
         condition: service_completed_successfully
     healthcheck:
-      test: [CMD, node, -e, "fetch('http://127.0.0.1:8920/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      test:
+        [
+          CMD,
+          node,
+          -e,
+          "fetch('http://127.0.0.1:8920/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
       interval: 15s
       timeout: 5s
       retries: 3

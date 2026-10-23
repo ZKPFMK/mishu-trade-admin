@@ -14,8 +14,59 @@ import {
   roles,
 } from "../packages/contracts/src/index.js";
 import { exportSchema } from "../packages/core/src/exports.js";
+import {
+  managementInput,
+  managementIntent,
+  managementCommand,
+  managementPreview,
+  managementReceipt,
+  fingerprint,
+} from "../packages/contracts/src/management.js";
 const reason = z.string().trim().min(5).max(1000);
 const raw = {
+  ManagementInput: managementInput,
+  ManagementIntent: managementIntent,
+  ManagementCommand: managementCommand,
+  ManagementPreview: managementPreview,
+  ManagementReceipt: managementReceipt,
+  ManagementPreviewRequest: z
+    .object({ application_id: identifier, input: managementInput })
+    .strict(),
+  ManagementRequest: z
+    .object({
+      application_id: identifier,
+      input: managementInput,
+      expected_fingerprint: fingerprint,
+      reason,
+      evidence: z.string().trim().min(10).max(2000),
+      idempotency_key: identifier,
+      password: z.string().min(1).max(200),
+      otp: z.string().max(64).optional(),
+    })
+    .strict(),
+  ManagementDecision: z
+    .object({
+      reason,
+      password: z.string().min(1).max(200).optional(),
+      otp: z.string().max(64).optional(),
+    })
+    .strict(),
+  ManagementCase: z
+    .object({
+      application_id: identifier,
+      trade_id: identifier.optional(),
+      title: z.string().trim().min(5).max(200),
+      evidence: z.string().trim().min(10).max(2000),
+    })
+    .strict(),
+  MfaSetup: z.object({ password: z.string().min(1).max(200) }).strict(),
+  MfaConfirm: z.object({ otp: z.string().regex(/^\d{6}$/) }).strict(),
+  MfaDisable: z
+    .object({
+      password: z.string().min(1).max(200),
+      otp: z.string().max(64).optional(),
+    })
+    .strict(),
   Event: eventSchema,
   Snapshot: snapshotSchema,
   EventBatch: batchSchema,
@@ -25,11 +76,16 @@ const raw = {
   SourceCommand: commandSchema,
   ExportRequest: exportSchema.extend({ application_id: identifier }),
   Login: z
-    .object({ email: z.email().max(254), password: z.string().min(1).max(200) })
+    .object({
+      email: z.email().max(254),
+      password: z.string().min(1).max(200),
+      otp: z.string().max(64).optional(),
+    })
     .strict(),
   PasswordChange: z
     .object({
       current: z.string().max(200),
+      otp: z.string().max(64).optional(),
       password: z.string().min(12).max(200),
     })
     .strict(),
@@ -273,6 +329,68 @@ add(
   false,
   "PasswordChange",
 );
+add(
+  "get",
+  "/auth/security",
+  "MFA enrollment state and remaining recovery code count",
+);
+add(
+  "post",
+  "/auth/mfa/setup",
+  "Start password-verified authenticator enrollment",
+  false,
+  "MfaSetup",
+);
+add(
+  "post",
+  "/auth/mfa/confirm",
+  "Verify authenticator and show one-time recovery codes",
+  false,
+  "MfaConfirm",
+);
+add(
+  "post",
+  "/auth/mfa/disable",
+  "Password and second factor required; revokes sessions",
+  false,
+  "MfaDisable",
+);
+add(
+  "get",
+  "/admin/management/requests",
+  "Read real-source management requests; page 1–1000, 25 records per page, optional state filter",
+);
+add(
+  "post",
+  "/admin/management/cases",
+  "Create and claim an evidence-backed case",
+  false,
+  "ManagementCase",
+);
+add(
+  "post",
+  "/admin/management/preview",
+  "Read authoritative eligibility and business fingerprint; no funds move",
+  false,
+  "ManagementPreviewRequest",
+);
+add(
+  "post",
+  "/admin/management/requests",
+  "Request immutable management operation with password and required MFA",
+  false,
+  "ManagementRequest",
+);
+for (const action of ["approve", "reject", "cancel"])
+  add(
+    "post",
+    "/admin/management/requests/{id}/" + action,
+    action === "approve"
+      ? "Independent approval, password and required MFA; valid for 15 minutes"
+      : action + " without altering source history",
+    false,
+    "ManagementDecision",
+  );
 const bodies: Record<string, string> = {
   "/admin/operation-requests": "OperationRequest",
   "/admin/cases": "CaseCreate",
@@ -331,7 +449,7 @@ const spec = {
     title: "MiShu Trade Admin",
     version: "0.1.0",
     description:
-      "Runtime-validated ingress schemas. Administrative body details and source responsibilities are documented in docs/source-contract.md. SourceCommand is the source-side mock contract; real source execution is disabled.",
+      "Runtime-validated ingress schemas. Administrative body details and source responsibilities are documented in docs/source-contract.md. SourceCommand is the legacy mock contract. ManagementCommand is the separately enabled real-source contract; see docs/management.md for authoritative execution and recovery semantics.",
   },
   servers: [{ url: "http://localhost:8920" }],
   paths,

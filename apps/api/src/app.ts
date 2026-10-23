@@ -1,3 +1,6 @@
+import { managementRoutes } from "./management.js";
+import { activeManagement } from "../../../packages/core/src/management.js";
+import { sourceAdapter } from "../../../packages/adapters/src/index.js";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
@@ -66,6 +69,10 @@ export async function createApp(db: pg.Pool, cfg: Config) {
       return reply
         .code(409)
         .send({ error: "record_conflict", request_id: req.id });
+    if (err.statusCode === 429)
+      return reply
+        .code(429)
+        .send({ error: "rate_limited", request_id: req.id });
     if (err.statusCode && err.statusCode < 500)
       return reply
         .code(err.statusCode)
@@ -100,6 +107,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
       insist(origin.host === req.headers.host, 403, "origin_invalid");
     }
   });
+  managementRoutes(api, db, cfg);
   api.get("/health", async () => {
     await db.query("SELECT 1");
     return { status: "ok", service: "mishu-trade-admin", version: "0.1.0" };
@@ -120,10 +128,11 @@ export async function createApp(db: pg.Pool, cfg: Config) {
         .object({
           email: z.email().max(254),
           password: z.string().min(1).max(200),
+          otp: z.string().max(64).optional(),
         })
         .strict()
         .parse(req.body);
-      const session = await login(db, body.email, body.password);
+      const session = await login(db, body.email, body.password, cfg, body.otp);
       reply.setCookie("trade_session", session.token, {
         path: "/",
         httpOnly: true,
@@ -149,12 +158,23 @@ export async function createApp(db: pg.Pool, cfg: Config) {
       b = z
         .object({
           current: z.string().max(200),
+          otp: z.string().max(64).optional(),
           password: z.string().min(12).max(200),
         })
         .strict()
         .parse(req.body);
     const { verifyPassword } = await import(
       "../../../packages/core/src/security.js"
+    );
+    const { reauthenticate } = await import(
+      "../../../packages/core/src/mfa.js"
+    );
+    await reauthenticate(
+      db,
+      { ...cfg, requireMfa: false },
+      user.id,
+      b.current,
+      b.otp,
     );
     const old = (
       await db.query("SELECT password_hash FROM operators WHERE id=$1", [
@@ -167,10 +187,11 @@ export async function createApp(db: pg.Pool, cfg: Config) {
       "invalid_credentials",
     );
     await transaction(db, async (sql) => {
-      await sql.query("UPDATE operators SET password_hash=$2 WHERE id=$1", [
-        user.id,
-        await passwordHash(b.password),
-      ]);
+      const changed = await sql.query(
+        "UPDATE operators SET password_hash=$2 WHERE id=$1 AND password_hash=$3 AND enabled",
+        [user.id, await passwordHash(b.password), old.password_hash],
+      );
+      insist(changed.rowCount, 409, "operator_permission_changed");
       await sql.query("DELETE FROM sessions WHERE operator_id=$1", [user.id]);
       await audit(sql, null, user.id, "auth.password_changed", user.id);
     });
@@ -191,7 +212,10 @@ export async function createApp(db: pg.Pool, cfg: Config) {
         "SELECT a.*,(SELECT count(*)::int FROM event_inbox WHERE application_id=a.id AND state<>'applied') pending_events,(SELECT count(*)::int FROM event_conflicts WHERE application_id=a.id AND resolved_at IS NULL) conflicts FROM applications a WHERE id=ANY($1) ORDER BY (a.source_mode='mishu') DESC,a.created_at,a.id",
         [user.scopes],
       )
-    ).rows;
+    ).rows.map((a) => ({
+      ...a,
+      management_available: !!(a.management_enabled && cfg.managementEnabled),
+    }));
   });
   api.get("/admin/overview", async (req) => {
     const { app } = await scoped(req),
@@ -423,7 +447,35 @@ export async function createApp(db: pg.Pool, cfg: Config) {
       }
       if (b.action === "close") {
         insist(c.owner_id === user.id, 403, "case_owner_only");
-        await sql.query("UPDATE cases SET state='closed' WHERE id=$1", [key]);
+        insist(
+          !(
+            await sql.query(
+              "SELECT 1 FROM management_requests WHERE case_id=$1 AND state=ANY($2)",
+              [key, activeManagement],
+            )
+          ).rowCount,
+          409,
+          "case_has_active_operations",
+        );
+        const application = (
+          await sql.query("SELECT * FROM applications WHERE id=$1", [
+            c.application_id,
+          ])
+        ).rows[0];
+        if (c.trade_id && application.source_mode === "mishu") {
+          const current = await sourceAdapter(db, cfg, application).trade(
+            c.trade_id,
+          );
+          insist(
+            current.operational_hold?.case_id !== key,
+            409,
+            "case_has_active_hold",
+          );
+        }
+        await sql.query(
+          "UPDATE cases SET state='closed',resolution=$2 WHERE id=$1",
+          [key, b.note],
+        );
       }
       await sql.query(
         "INSERT INTO case_notes(case_id,actor_id,note) VALUES($1,$2,$3)",

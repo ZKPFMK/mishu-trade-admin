@@ -64,7 +64,7 @@ try {
     const status = (await r.json()) as any;
     if (
       status.schema_version !== 1 ||
-      status.write_commands !== false ||
+      typeof status.write_commands !== "boolean" ||
       !/^mishu_[a-f0-9]{32}$/.test(status.source_id)
     )
       throw Error("Unsupported source status.");

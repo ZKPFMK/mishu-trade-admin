@@ -3,6 +3,7 @@ import type { FastifyRequest } from "fastify";
 import { randomBytes } from "node:crypto";
 import { hash, insist, verifyPassword } from "./security.js";
 import { audit } from "./audit.js";
+import { transaction } from "../../database/src/index.js";
 export type Actor = {
   id: string;
   email: string;
@@ -11,7 +12,13 @@ export type Actor = {
   scopes: string[];
   csrf: string;
 };
-export async function login(db: pg.Pool, email: string, password: string) {
+export async function login(
+  db: pg.Pool,
+  email: string,
+  password: string,
+  cfg?: import("./config.js").Config,
+  otp = "",
+) {
   const row = (
     await db.query("SELECT * FROM operators WHERE email=$1", [
       email.toLowerCase(),
@@ -22,13 +29,44 @@ export async function login(db: pg.Pool, email: string, password: string) {
     row?.password_hash || "00000000000000000000000000000000:" + "00".repeat(64),
   );
   insist(row?.enabled && valid, 401, "invalid_credentials");
+  const { reauthenticate, securityState } = await import("./mfa.js");
+  const proof = cfg
+    ? await reauthenticate(
+        db,
+        { ...cfg, requireMfa: false },
+        row.id,
+        password,
+        otp,
+      )
+    : null;
   const token = randomBytes(32).toString("base64url"),
     csrf = randomBytes(24).toString("base64url");
-  await db.query(
-    "INSERT INTO sessions(token_hash,operator_id,csrf,expires_at) VALUES($1,$2,$3,now()+interval '8 hours')",
-    [hash(token), row.id, csrf],
-  );
-  await audit(db, null, row.id, "auth.login", row.id);
+  await transaction(db, async (sql) => {
+    const current = (
+      await sql.query(
+        "SELECT password_hash,enabled FROM operators WHERE id=$1 FOR UPDATE",
+        [row.id],
+      )
+    ).rows[0];
+    await sql.query(
+      "SELECT operator_id FROM operator_mfa WHERE operator_id=$1 FOR UPDATE",
+      [row.id],
+    );
+    insist(
+      current?.enabled &&
+        current.password_hash === row.password_hash &&
+        (!proof ||
+          (await securityState(sql, row.id))?.fingerprint ===
+            proof.fingerprint),
+      401,
+      "invalid_credentials",
+    );
+    await sql.query(
+      "INSERT INTO sessions(token_hash,operator_id,csrf,expires_at) VALUES($1,$2,$3,now()+interval '8 hours')",
+      [hash(token), row.id, csrf],
+    );
+    await audit(sql, null, row.id, "auth.login", row.id);
+  });
   return { token, csrf };
 }
 export async function actor(db: pg.Pool, req: FastifyRequest): Promise<Actor> {

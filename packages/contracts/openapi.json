@@ -3,7 +3,7 @@
   "info": {
     "title": "MiShu Trade Admin",
     "version": "0.1.0",
-    "description": "Runtime-validated ingress schemas. Administrative body details and source responsibilities are documented in docs/source-contract.md. SourceCommand is the source-side mock contract; real source execution is disabled."
+    "description": "Runtime-validated ingress schemas. Administrative body details and source responsibilities are documented in docs/source-contract.md. SourceCommand is the legacy mock contract. ManagementCommand is the separately enabled real-source contract; see docs/management.md for authoritative execution and recovery semantics."
   },
   "servers": [
     {
@@ -2066,6 +2066,447 @@
           }
         }
       }
+    },
+    "/auth/security": {
+      "get": {
+        "summary": "MFA enrollment state and remaining recovery code count",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/auth/mfa/setup": {
+      "post": {
+        "summary": "Start password-verified authenticator enrollment",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaSetup"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/mfa/confirm": {
+      "post": {
+        "summary": "Verify authenticator and show one-time recovery codes",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaConfirm"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/mfa/disable": {
+      "post": {
+        "summary": "Password and second factor required; revokes sessions",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MfaDisable"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/management/requests": {
+      "get": {
+        "summary": "Read real-source management requests; page 1–1000, 25 records per page, optional state filter",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      },
+      "post": {
+        "summary": "Request immutable management operation with password and required MFA",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/management/cases": {
+      "post": {
+        "summary": "Create and claim an evidence-backed case",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementCase"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/management/preview": {
+      "post": {
+        "summary": "Read authoritative eligibility and business fingerprint; no funds move",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementPreviewRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/management/requests/{id}/approve": {
+      "post": {
+        "summary": "Independent approval, password and required MFA; valid for 15 minutes",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementDecision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/management/requests/{id}/reject": {
+      "post": {
+        "summary": "reject without altering source history",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementDecision"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/management/requests/{id}/cancel": {
+      "post": {
+        "summary": "cancel without altering source history",
+        "security": [
+          {
+            "sessionCookie": [],
+            "csrfToken": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Request accepted; asynchronous state is returned separately."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ManagementDecision"
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2086,6 +2527,700 @@
       }
     },
     "schemas": {
+      "ManagementInput": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "refund_undelivered",
+              "retry_settlement",
+              "resume_dispute",
+              "adjust_credit",
+              "hold_trade",
+              "release_trade"
+            ]
+          },
+          "target_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "case_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "amount": {
+            "type": "string",
+            "maxLength": 20,
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+          },
+          "reference_command_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          }
+        },
+        "required": [
+          "type",
+          "target_id",
+          "case_id"
+        ],
+        "additionalProperties": false
+      },
+      "ManagementIntent": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "application_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "source_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "operation": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "refund_undelivered",
+                  "retry_settlement",
+                  "resume_dispute",
+                  "adjust_credit",
+                  "hold_trade",
+                  "release_trade"
+                ]
+              },
+              "target_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              "case_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              "amount": {
+                "type": "string",
+                "maxLength": 20,
+                "pattern": "^(0|-?[1-9]\\d*)$",
+                "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+              },
+              "reference_command_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              }
+            },
+            "required": [
+              "type",
+              "target_id",
+              "case_id",
+              "amount"
+            ],
+            "additionalProperties": false
+          },
+          "expected_fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 1000
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 2000
+          },
+          "requester_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "requested_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "expires_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "command_id",
+          "application_id",
+          "source_id",
+          "operation",
+          "expected_fingerprint",
+          "reason",
+          "evidence",
+          "requester_id",
+          "requested_at",
+          "expires_at"
+        ],
+        "additionalProperties": false
+      },
+      "ManagementCommand": {
+        "type": "object",
+        "properties": {
+          "intent": {
+            "type": "object",
+            "properties": {
+              "command_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              "application_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              "source_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              "operation": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "refund_undelivered",
+                      "retry_settlement",
+                      "resume_dispute",
+                      "adjust_credit",
+                      "hold_trade",
+                      "release_trade"
+                    ]
+                  },
+                  "target_id": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                  },
+                  "case_id": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                  },
+                  "amount": {
+                    "type": "string",
+                    "maxLength": 20,
+                    "pattern": "^(0|-?[1-9]\\d*)$",
+                    "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+                  },
+                  "reference_command_id": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                  }
+                },
+                "required": [
+                  "type",
+                  "target_id",
+                  "case_id",
+                  "amount"
+                ],
+                "additionalProperties": false
+              },
+              "expected_fingerprint": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 1000
+              },
+              "evidence": {
+                "type": "string",
+                "minLength": 10,
+                "maxLength": 2000
+              },
+              "requester_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              "requested_at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "expires_at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              }
+            },
+            "required": [
+              "command_id",
+              "application_id",
+              "source_id",
+              "operation",
+              "expected_fingerprint",
+              "reason",
+              "evidence",
+              "requester_id",
+              "requested_at",
+              "expires_at"
+            ],
+            "additionalProperties": false
+          },
+          "authorization": {
+            "type": "object",
+            "properties": {
+              "approver_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              "approved_at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "expires_at": {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              "request_digest": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$"
+              },
+              "reason": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 1000
+              }
+            },
+            "required": [
+              "approver_id",
+              "approved_at",
+              "expires_at",
+              "request_digest",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "intent",
+          "authorization"
+        ],
+        "additionalProperties": false
+      },
+      "ManagementPreview": {
+        "type": "object",
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "operation": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "refund_undelivered",
+                  "retry_settlement",
+                  "resume_dispute",
+                  "adjust_credit",
+                  "hold_trade",
+                  "release_trade"
+                ]
+              },
+              "target_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              "case_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              "amount": {
+                "type": "string",
+                "maxLength": 20,
+                "pattern": "^(0|-?[1-9]\\d*)$",
+                "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+              },
+              "reference_command_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              }
+            },
+            "required": [
+              "type",
+              "target_id",
+              "case_id",
+              "amount"
+            ],
+            "additionalProperties": false
+          },
+          "fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "target_name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "balance": {
+            "type": "string",
+            "maxLength": 20,
+            "pattern": "^(0|-?[1-9]\\d*)$",
+            "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+          },
+          "hold_case_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "accept_by": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "source_id",
+          "operation",
+          "fingerprint",
+          "target_name",
+          "status",
+          "user_id",
+          "balance",
+          "hold_case_id",
+          "accept_by"
+        ],
+        "additionalProperties": false
+      },
+      "ManagementReceipt": {
+        "type": "object",
+        "properties": {
+          "command_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "source_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "request_digest": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "refund_undelivered",
+              "retry_settlement",
+              "resume_dispute",
+              "adjust_credit",
+              "hold_trade",
+              "release_trade"
+            ]
+          },
+          "target_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "succeeded",
+              "rejected"
+            ]
+          },
+          "code": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "committed_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "journal_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+            }
+          }
+        },
+        "required": [
+          "command_id",
+          "source_id",
+          "request_digest",
+          "type",
+          "target_id",
+          "status",
+          "code",
+          "committed_at",
+          "journal_ids"
+        ],
+        "additionalProperties": false
+      },
+      "ManagementPreviewRequest": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "input": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "refund_undelivered",
+                  "retry_settlement",
+                  "resume_dispute",
+                  "adjust_credit",
+                  "hold_trade",
+                  "release_trade"
+                ]
+              },
+              "target_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              "case_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              "amount": {
+                "type": "string",
+                "maxLength": 20,
+                "pattern": "^(0|-?[1-9]\\d*)$",
+                "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+              },
+              "reference_command_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              }
+            },
+            "required": [
+              "type",
+              "target_id",
+              "case_id"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "application_id",
+          "input"
+        ],
+        "additionalProperties": false
+      },
+      "ManagementRequest": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "input": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "refund_undelivered",
+                  "retry_settlement",
+                  "resume_dispute",
+                  "adjust_credit",
+                  "hold_trade",
+                  "release_trade"
+                ]
+              },
+              "target_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              "case_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              },
+              "amount": {
+                "type": "string",
+                "maxLength": 20,
+                "pattern": "^(0|-?[1-9]\\d*)$",
+                "description": "Canonical signed 64-bit integer as decimal text; range is validated at runtime."
+              },
+              "reference_command_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+              }
+            },
+            "required": [
+              "type",
+              "target_id",
+              "case_id"
+            ],
+            "additionalProperties": false
+          },
+          "expected_fingerprint": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 1000
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 2000
+          },
+          "idempotency_key": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "otp": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "application_id",
+          "input",
+          "expected_fingerprint",
+          "reason",
+          "evidence",
+          "idempotency_key",
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "ManagementDecision": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 1000
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "otp": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "additionalProperties": false
+      },
+      "ManagementCase": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "trade_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 5,
+            "maxLength": 200
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 2000
+          }
+        },
+        "required": [
+          "application_id",
+          "title",
+          "evidence"
+        ],
+        "additionalProperties": false
+      },
+      "MfaSetup": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "additionalProperties": false
+      },
+      "MfaConfirm": {
+        "type": "object",
+        "properties": {
+          "otp": {
+            "type": "string",
+            "pattern": "^\\d{6}$"
+          }
+        },
+        "required": [
+          "otp"
+        ],
+        "additionalProperties": false
+      },
+      "MfaDisable": {
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "otp": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": [
+          "password"
+        ],
+        "additionalProperties": false
+      },
       "Event": {
         "type": "object",
         "properties": {
@@ -2238,6 +3373,32 @@
                     "delivery_verified": {
                       "type": "boolean"
                     },
+                    "operational_hold": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "case_id": {
+                              "type": "string",
+                              "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                            },
+                            "since": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                            }
+                          },
+                          "required": [
+                            "case_id",
+                            "since"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "timeline": {
                       "maxItems": 200,
                       "type": "array",
@@ -2378,6 +3539,7 @@
                     "kind": {
                       "type": "string",
                       "enum": [
+                        "adjustment",
                         "topup",
                         "grant",
                         "fund",
@@ -2733,6 +3895,32 @@
                     "delivery_verified": {
                       "type": "boolean"
                     },
+                    "operational_hold": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "case_id": {
+                              "type": "string",
+                              "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                            },
+                            "since": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                            }
+                          },
+                          "required": [
+                            "case_id",
+                            "since"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "timeline": {
                       "maxItems": 200,
                       "type": "array",
@@ -2873,6 +4061,7 @@
                     "kind": {
                       "type": "string",
                       "enum": [
+                        "adjustment",
                         "topup",
                         "grant",
                         "fund",
@@ -3240,6 +4429,32 @@
                           "delivery_verified": {
                             "type": "boolean"
                           },
+                          "operational_hold": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "case_id": {
+                                    "type": "string",
+                                    "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                                  },
+                                  "since": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                                  }
+                                },
+                                "required": [
+                                  "case_id",
+                                  "since"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
                           "timeline": {
                             "maxItems": 200,
                             "type": "array",
@@ -3380,6 +4595,7 @@
                           "kind": {
                             "type": "string",
                             "enum": [
+                              "adjustment",
                               "topup",
                               "grant",
                               "fund",
@@ -3705,6 +4921,32 @@
           "delivery_verified": {
             "type": "boolean"
           },
+          "operational_hold": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "case_id": {
+                    "type": "string",
+                    "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+                  },
+                  "since": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  }
+                },
+                "required": [
+                  "case_id",
+                  "since"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "timeline": {
             "maxItems": 200,
             "type": "array",
@@ -3765,6 +5007,7 @@
           "kind": {
             "type": "string",
             "enum": [
+              "adjustment",
               "topup",
               "grant",
               "fund",
@@ -4127,6 +5370,10 @@
             "type": "string",
             "minLength": 1,
             "maxLength": 200
+          },
+          "otp": {
+            "type": "string",
+            "maxLength": 64
           }
         },
         "required": [
@@ -4141,6 +5388,10 @@
           "current": {
             "type": "string",
             "maxLength": 200
+          },
+          "otp": {
+            "type": "string",
+            "maxLength": 64
           },
           "password": {
             "type": "string",

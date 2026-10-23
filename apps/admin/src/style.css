@@ -1229,3 +1229,14 @@ footer {
     font-size: 18px;
   }
 }
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.modal-header h2 {
+  margin: 0;
+}

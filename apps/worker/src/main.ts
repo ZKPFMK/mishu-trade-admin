@@ -1,3 +1,4 @@
+import { executeManagement } from "../../../packages/core/src/management.js";
 import { config } from "../../../packages/core/src/config.js";
 import { database, migrate } from "../../../packages/database/src/index.js";
 import {
@@ -32,6 +33,7 @@ console.log(
 );
 await Promise.all([
   loop("sync", 2000, () => syncSources(db, cfg)),
+  loop("management", 1000, () => executeManagement(db, cfg)),
   loop("commands", 1000, () => executeOperation(db, cfg)),
   loop("jobs", 1000, () => runJob(db, cfg, ["import", "reconcile"])),
   loop("exports", 1000, () => runJob(db, cfg, ["export"])),

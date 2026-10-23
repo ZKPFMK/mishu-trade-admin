@@ -47,6 +47,11 @@ export const tradeSchema = z
     settled_at: time.nullable(),
     refunded_at: time.nullable(),
     delivery_verified: z.boolean(),
+    operational_hold: z
+      .object({ case_id: identifier, since: time })
+      .strict()
+      .nullable()
+      .optional(),
     timeline: z
       .array(
         z
@@ -103,6 +108,7 @@ export const journalSchema = z
   .object({
     id: identifier,
     kind: z.enum([
+      "adjustment",
       "topup",
       "grant",
       "fund",

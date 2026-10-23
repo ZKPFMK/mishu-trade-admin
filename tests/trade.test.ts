@@ -740,7 +740,7 @@ test("JSONL exports contain all journal entries; cancellation, permission revoca
     await f.close();
   }
 });
-test("real sources are hard-disabled for money commands regardless of administrator configuration", async () => {
+test("legacy mock refund endpoints reject real sources regardless of administrator configuration", async () => {
   const f = await fixture();
   try {
     await f.db.query(

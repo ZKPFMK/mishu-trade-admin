@@ -1,3 +1,8 @@
+import {
+  ManagementPanel,
+  ManagementDialog,
+  SecurityDialog,
+} from "./management";
 import React, {
   useEffect,
   useState,
@@ -235,6 +240,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
   const appearance = useAppearance(),
     [email, setEmail] = useState("admin@trade-admin.local"),
     [password, setPassword] = useState(""),
+    [otp, setOtp] = useState(""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   return (
@@ -270,7 +276,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
             try {
               await request("/auth/login", {
                 method: "POST",
-                body: JSON.stringify({ email, password }),
+                body: JSON.stringify({ email, password, otp }),
               });
               onLogin();
             } catch (e) {
@@ -300,14 +306,22 @@ function Login({ onLogin }: { onLogin: () => void }) {
               autoComplete="current-password"
             />
           </label>
+          <label>
+            动态验证码或恢复码
+            <input
+              autoComplete="one-time-code"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="已绑定验证器时填写"
+            />
+          </label>
           <Alert>{error}</Alert>
           <button className="primary full" disabled={busy}>
             {busy ? "登录中…" : "登录工作台"} <Icon name="arrow" />
           </button>
         </form>
         <p className="caption">
-          本地初始化凭据位于仓库
-          .local/credentials.json。首次使用后可在右上角修改密码。
+          使用管理员分配的账号登录；首次使用后请修改密码并绑定身份验证器。
         </p>
       </Panel>
       <footer>密树科技 MiShu · 交易管理</footer>
@@ -614,6 +628,7 @@ function Detail({
 }) {
   const r = useResource(c.url("/admin/trades/" + encodeURIComponent(id))),
     [apply, setApply] = useState(false),
+    [manage, setManage] = useState(false),
     d = r.data,
     t = d?.trade;
   return (
@@ -681,6 +696,43 @@ function Detail({
             ))
           ) : (
             <p className="muted">暂无处理申请</p>
+          )}
+          {t.operational_hold && (
+            <p className="alert">
+              订单已暂停，关联工单 {t.operational_hold.case_id}
+              ；暂停期间不自动结算或退款。
+            </p>
+          )}
+          {c.app.management_available && c.user.roles.includes("operator") && (
+            <button className="primary" onClick={() => setManage(true)}>
+              运营处理
+            </button>
+          )}
+          {manage && (
+            <ManagementDialog
+              c={c}
+              initial={
+                [
+                  "COMPLETED",
+                  "REFUNDED",
+                  "RESOLVED_BUYER",
+                  "RESOLVED_SELLER",
+                ].includes(t.status)
+                  ? { type: "adjust_credit", target: "user:" + t.buyer_id }
+                  : {
+                      type: t.operational_hold
+                        ? "release_trade"
+                        : t.status === "FUNDED"
+                          ? "refund_undelivered"
+                          : t.status === "DISPUTED"
+                            ? "resume_dispute"
+                            : "retry_settlement",
+                      target: t.id,
+                    }
+              }
+              onClose={() => setManage(false)}
+              onDone={r.refresh}
+            />
           )}
           {c.app.source_mode === "mock" &&
             c.user.roles.includes("operator") &&
@@ -852,7 +904,9 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
             CREDIT ·{" "}
             {c.app.source_mode === "mock"
               ? "模拟演示数据"
-              : "主平台数据 · 只读"}{" "}
+              : c.app.management_available
+                ? "主平台数据 · 受控操作"
+                : "主平台数据 · 只读"}{" "}
             · 每 10 秒更新
           </span>
         </div>
@@ -1040,89 +1094,95 @@ function Operations({ c }: { c: Context }) {
     [trade, setTrade] = useState("");
   return (
     <>
-      <Panel
-        title="托管积分退回审批"
-        action={<span className="caption">申请人与审批人分离 · 自动更新</span>}
-      >
-        <p className="muted">
-          从订单详情提交申请。仅支持尚未交付、无争议的托管订单全额退回。审批有效期
-          30 分钟。
-        </p>
-        <Alert>{r.error}</Alert>
-        {r.data?.length ? (
-          r.data.map((o) => (
-            <article className="operation" key={o.id}>
-              <div className="record-row">
-                <code>{o.trade_id}</code>
-                <Badge value={o.state} />
-                <strong>{money(o.command.amount)} CREDIT</strong>
-              </div>
-              <p>{o.reason}</p>
-              <div className="caption">
-                申请人 {o.requester_name} · 审批人 {o.approver_name || "待指定"}{" "}
-                · 来源版本 {o.command.expected_version} · {date(o.created_at)}
-              </div>
-              {o.error && <Alert>{errorText(o.error)}</Alert>}
-              {o.state === "succeeded" && (
-                <p className="caption">
-                  {o.projection_synced
-                    ? "来源已执行，查询数据已同步"
-                    : "来源执行成功，数据同步中"}{" "}
-                  · 回执 {o.receipt?.journal_id}
-                </p>
-              )}
-              <div className="form-actions">
-                {o.state === "pending_approval" &&
-                  c.user.roles.includes("approver") &&
-                  o.requester_id !== c.user.id && (
-                    <>
+      {c.app.source_mode === "mishu" && <ManagementPanel c={c} />}
+      {c.app.source_mode === "mock" && (
+        <Panel
+          title="托管积分退回审批"
+          action={
+            <span className="caption">申请人与审批人分离 · 自动更新</span>
+          }
+        >
+          <p className="muted">
+            从订单详情提交申请。仅支持尚未交付、无争议的托管订单全额退回。审批有效期
+            30 分钟。
+          </p>
+          <Alert>{r.error}</Alert>
+          {r.data?.length ? (
+            r.data.map((o) => (
+              <article className="operation" key={o.id}>
+                <div className="record-row">
+                  <code>{o.trade_id}</code>
+                  <Badge value={o.state} />
+                  <strong>{money(o.command.amount)} CREDIT</strong>
+                </div>
+                <p>{o.reason}</p>
+                <div className="caption">
+                  申请人 {o.requester_name} · 审批人{" "}
+                  {o.approver_name || "待指定"} · 来源版本{" "}
+                  {o.command.expected_version} · {date(o.created_at)}
+                </div>
+                {o.error && <Alert>{errorText(o.error)}</Alert>}
+                {o.state === "succeeded" && (
+                  <p className="caption">
+                    {o.projection_synced
+                      ? "来源已执行，查询数据已同步"
+                      : "来源执行成功，数据同步中"}{" "}
+                    · 回执 {o.receipt?.journal_id}
+                  </p>
+                )}
+                <div className="form-actions">
+                  {o.state === "pending_approval" &&
+                    c.user.roles.includes("approver") &&
+                    o.requester_id !== c.user.id && (
+                      <>
+                        <button
+                          className="primary"
+                          onClick={() =>
+                            setAction({
+                              path: `/admin/operation-requests/${o.id}/approve`,
+                              title: "批准退回托管积分",
+                              description: `确认向 ${o.command.buyer_id} 退回 ${money(o.command.amount)} CREDIT。订单 ${o.trade_id}，版本 ${o.command.expected_version}。`,
+                            })
+                          }
+                        >
+                          审批通过
+                        </button>
+                        <button
+                          onClick={() =>
+                            setAction({
+                              path: `/admin/operation-requests/${o.id}/reject`,
+                              title: "拒绝申请",
+                              description: "拒绝后不会执行此申请。",
+                            })
+                          }
+                        >
+                          拒绝
+                        </button>
+                      </>
+                    )}
+                  {["pending_approval", "approved"].includes(o.state) &&
+                    o.requester_id === c.user.id && (
                       <button
-                        className="primary"
                         onClick={() =>
                           setAction({
-                            path: `/admin/operation-requests/${o.id}/approve`,
-                            title: "批准退回托管积分",
-                            description: `确认向 ${o.command.buyer_id} 退回 ${money(o.command.amount)} CREDIT。订单 ${o.trade_id}，版本 ${o.command.expected_version}。`,
+                            path: `/admin/operation-requests/${o.id}/cancel`,
+                            title: "取消申请",
+                            description:
+                              "取消后需要重新核验来源状态才能再次申请。",
                           })
                         }
                       >
-                        审批通过
+                        取消申请
                       </button>
-                      <button
-                        onClick={() =>
-                          setAction({
-                            path: `/admin/operation-requests/${o.id}/reject`,
-                            title: "拒绝申请",
-                            description: "拒绝后不会执行此申请。",
-                          })
-                        }
-                      >
-                        拒绝
-                      </button>
-                    </>
-                  )}
-                {["pending_approval", "approved"].includes(o.state) &&
-                  o.requester_id === c.user.id && (
-                    <button
-                      onClick={() =>
-                        setAction({
-                          path: `/admin/operation-requests/${o.id}/cancel`,
-                          title: "取消申请",
-                          description:
-                            "取消后需要重新核验来源状态才能再次申请。",
-                        })
-                      }
-                    >
-                      取消申请
-                    </button>
-                  )}
-              </div>
-            </article>
-          ))
-        ) : (
-          <Empty>暂无申请，可从订单详情提交</Empty>
-        )}
-      </Panel>
+                    )}
+                </div>
+              </article>
+            ))
+          ) : (
+            <Empty>暂无申请，可从订单详情提交</Empty>
+          )}
+        </Panel>
+      )}
       <Panel
         title="异常工单"
         action={
@@ -1569,7 +1629,9 @@ function Applications({ c }: { c: Context }) {
             <strong>
               {c.app.source_mode === "mock"
                 ? "独立模拟来源"
-                : "MiShu HTTP · 只读"}
+                : c.app.management_available
+                  ? "MiShu HTTP · 受控操作"
+                  : "MiShu HTTP · 只读"}
             </strong>
           </span>
           <span>
@@ -1583,7 +1645,9 @@ function Applications({ c }: { c: Context }) {
             <strong>
               {c.app.source_mode === "mock"
                 ? "模拟全额托管退款"
-                : "关闭（只读）"}
+                : c.app.management_available
+                  ? "启用 · 独立审批"
+                  : "关闭（只读）"}
             </strong>
           </span>
         </div>
@@ -1924,6 +1988,8 @@ function App() {
     [page, setPage] = useState(location.hash.slice(1) || "overview"),
     [notice, setNotice] = useState(""),
     [password, setPassword] = useState(false),
+    [security, setSecurity] = useState(false),
+    [passwordOtp, setPasswordOtp] = useState(""),
     [current, setCurrent] = useState(""),
     [next, setNext] = useState(""),
     [error, setError] = useState("");
@@ -2059,6 +2125,7 @@ function App() {
         </header>
         <main>
           <div className="context-bar">
+            <button onClick={() => setSecurity(true)}>安全验证</button>
             <select
               aria-label="当前应用"
               value={app?.id || ""}
@@ -2072,7 +2139,9 @@ function App() {
             </select>
             <span className="badge">
               {app?.source_mode === "mishu"
-                ? "主平台数据 · 只读"
+                ? app?.management_available
+                  ? "主平台数据 · 受控操作"
+                  : "主平台数据 · 只读"
                 : "模拟演示数据"}
             </span>
             <span className="badge">积分 · 模拟支付</span>
@@ -2127,13 +2196,18 @@ function App() {
           ✓ {notice}
         </div>
       )}
+      {security && <SecurityDialog c={c} onClose={() => setSecurity(false)} />}
       {password && (
         <Modal title="修改登录密码" onClose={() => setPassword(false)}>
           <form
             onSubmit={async (e) => {
               e.preventDefault();
               try {
-                await c.mutate("/auth/password", { current, password: next });
+                await c.mutate("/auth/password", {
+                  current,
+                  password: next,
+                  otp: passwordOtp,
+                });
                 setPassword(false);
                 setCurrent("");
                 setNext("");
@@ -2166,6 +2240,15 @@ function App() {
               />
             </label>
             <Alert>{error}</Alert>
+            <label>
+              动态验证码或恢复码
+              <input
+                autoComplete="one-time-code"
+                value={passwordOtp}
+                onChange={(e) => setPasswordOtp(e.target.value)}
+                placeholder="已绑定验证器时必填"
+              />
+            </label>
             <button className="primary">更新密码并退出</button>
           </form>
         </Modal>
