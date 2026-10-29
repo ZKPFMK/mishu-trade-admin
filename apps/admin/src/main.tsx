@@ -1,5 +1,12 @@
 import { Dashboard } from "./overview";
 import {
+  WorkspaceHome,
+  OperationsWorkspace,
+  ServiceWorkspace,
+  ReviewWorkspace,
+  TeamWorkspace,
+} from "./workspace";
+import {
   ManagementPanel,
   ManagementDialog,
   SecurityDialog,
@@ -41,21 +48,48 @@ type Context = {
   url: (path: string, extra?: Record<string, string>) => string;
   mutate: (path: string, body?: unknown) => Promise<any>;
   notify: (text: string) => void;
+  openTrade?: (id: string) => void;
 };
 const pages: [string, string, IconName][] = [
-  ["overview", "工作概览", "overview"],
+  ["workspace", "我的工作台", "overview"],
+  ["followups", "交易跟进", "submissions"],
+  ["service", "客服工单", "submissions"],
+  ["reviews", "审核中心", "reviews"],
+  ["team", "团队管理", "applications"],
+  ["overview", "经营分析", "overview"],
   ["trades", "全部订单", "submissions"],
+  ["generation-jobs", "生成扣费", "playground"],
   ["accounts", "积分账户", "policies"],
   ["journal-transactions", "全部流水", "submissions"],
   ["settlements", "分账与版税", "policies"],
-  ["generation-jobs", "生成扣费", "playground"],
-  ["operations", "异常与审批", "reviews"],
   ["reconciliation", "对账中心", "reviews"],
   ["exports", "导出中心", "submissions"],
   ["applications", "应用接入", "applications"],
   ["operators", "操作员", "applications"],
   ["audit", "操作审计", "audit"],
 ];
+const navigationGroups = [
+  {
+    label: "日常工作",
+    keys: ["workspace", "followups", "service", "reviews", "team"],
+  },
+  { label: "业务数据", keys: ["overview", "trades", "generation-jobs"] },
+  {
+    label: "账务管理",
+    keys: [
+      "accounts",
+      "journal-transactions",
+      "settlements",
+      "reconciliation",
+      "exports",
+    ],
+  },
+  { label: "系统管理", keys: ["applications", "operators", "audit"] },
+];
+function routePage() {
+  const name = location.hash.slice(1).split("?")[0] || "workspace";
+  return name === "operations" ? "reviews" : name;
+}
 function Badge({ value }: { value: string }) {
   return (
     <span
@@ -258,7 +292,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
           <span>清晰可追溯。</span>
         </h1>
         <p className="muted">
-          订单、积分、分账与异常处理，
+          交易跟进、客户服务与审核协作，
           <br />
           在独立的管理工作台中协同完成。
         </p>
@@ -535,6 +569,19 @@ function Detail({
               来源版本<strong>{t.version}</strong>
             </span>
           </div>
+          {c.user.roles.includes("operator") && (
+            <div className="form-actions">
+              <button
+                onClick={() => {
+                  onClose();
+                  location.hash =
+                    "service?trade=" + encodeURIComponent(t.id) + "&create=1";
+                }}
+              >
+                建立跟进工单
+              </button>
+            </div>
+          )}
           <h3>状态时间线</h3>
           <ol className="timeline">
             {t.timeline.map((e: any, i: number) => (
@@ -944,7 +991,13 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
     </>
   );
 }
-function Operations({ c }: { c: Context }) {
+function Operations({
+  c,
+  showCases = true,
+}: {
+  c: Context;
+  showCases?: boolean;
+}) {
   const r = useResource<any[]>(c.url("/admin/operation-requests")),
     cases = useResource<any[]>(c.url("/admin/cases")),
     [action, setAction] = useState<{
@@ -1046,80 +1099,83 @@ function Operations({ c }: { c: Context }) {
           )}
         </Panel>
       )}
-      <Panel
-        title="异常工单"
-        action={
-          c.user.roles.includes("operator") && (
-            <button onClick={() => setNewCase(true)}>新建工单</button>
-          )
-        }
-      >
-        <Alert>{cases.error}</Alert>
-        {cases.data?.length ? (
-          cases.data.map((x) => (
-            <article className="operation" key={x.id}>
-              <div className="record-row">
-                <h3>{x.title}</h3>
-                <Badge value={x.state} />
-              </div>
-              <p className="caption">
-                关联订单 {x.trade_id || "无"} · 处理人{" "}
-                {x.owner_name || "待领取"}
-              </p>
-              {x.notes.map((n: any, i: number) => (
-                <div className="note" key={i}>
-                  {n.note}
-                  <small>{date(n.at)}</small>
+      {showCases && (
+        <Panel
+          title="异常工单"
+          action={
+            c.user.roles.includes("operator") && (
+              <button onClick={() => setNewCase(true)}>新建工单</button>
+            )
+          }
+        >
+          <Alert>{cases.error}</Alert>
+          {cases.data?.length ? (
+            cases.data.map((x) => (
+              <article className="operation" key={x.id}>
+                <div className="record-row">
+                  <h3>{x.title}</h3>
+                  <Badge value={x.state} />
                 </div>
-              ))}
-              {x.state === "open" && c.user.roles.includes("operator") && (
-                <div className="form-actions">
-                  {!x.owner_id && (
+                <p className="caption">
+                  关联订单 {x.trade_id || "无"} · 处理人{" "}
+                  {x.owner_name || "待领取"}
+                </p>
+                {x.notes.map((n: any, i: number) => (
+                  <div className="note" key={i}>
+                    {n.note}
+                    <small>{date(n.at)}</small>
+                  </div>
+                ))}
+                {x.state === "open" && c.user.roles.includes("operator") && (
+                  <div className="form-actions">
+                    {!x.owner_id && (
+                      <button
+                        onClick={() =>
+                          setAction({
+                            path: `/admin/cases/${x.id}`,
+                            title: "领取工单",
+                            description:
+                              "填写处理说明，领取后可跟进并关闭工单。",
+                          })
+                        }
+                      >
+                        领取任务
+                      </button>
+                    )}
                     <button
                       onClick={() =>
                         setAction({
-                          path: `/admin/cases/${x.id}`,
-                          title: "领取工单",
-                          description: "填写处理说明，领取后可跟进并关闭工单。",
+                          path: `/admin/cases/${x.id}?action=note`,
+                          title: "补充处理记录",
+                          description: "记录将追加保存，保留处理历史。",
                         })
                       }
                     >
-                      领取任务
+                      补充记录
                     </button>
-                  )}
-                  <button
-                    onClick={() =>
-                      setAction({
-                        path: `/admin/cases/${x.id}?action=note`,
-                        title: "补充处理记录",
-                        description: "记录将追加保存，保留处理历史。",
-                      })
-                    }
-                  >
-                    补充记录
-                  </button>
-                  {x.owner_id === c.user.id && (
-                    <button
-                      onClick={() =>
-                        setAction({
-                          path: `/admin/cases/${x.id}?action=close`,
-                          title: "关闭工单",
-                          description:
-                            "请填写处理结论。关闭工单不会修改来源账本。",
-                        })
-                      }
-                    >
-                      关闭工单
-                    </button>
-                  )}
-                </div>
-              )}
-            </article>
-          ))
-        ) : (
-          <Empty>暂无异常工单</Empty>
-        )}
-      </Panel>
+                    {x.owner_id === c.user.id && (
+                      <button
+                        onClick={() =>
+                          setAction({
+                            path: `/admin/cases/${x.id}?action=close`,
+                            title: "关闭工单",
+                            description:
+                              "请填写处理结论。关闭工单不会修改来源账本。",
+                          })
+                        }
+                      >
+                        关闭工单
+                      </button>
+                    )}
+                  </div>
+                )}
+              </article>
+            ))
+          ) : (
+            <Empty>暂无异常工单</Empty>
+          )}
+        </Panel>
+      )}
       {action && (
         <ActionForm
           {...action}
@@ -1677,16 +1733,16 @@ function Operators({ c }: { c: Context }) {
     [secret, setSecret] = useState(""),
     [error, setError] = useState("");
   const labels: Record<string, string> = {
-    admin: "系统管理员",
-    operator: "申请与处理",
-    approver: "独立审批",
-    viewer: "运营查看",
+    admin: "团队与系统管理",
+    operator: "运营 / 客服处理",
+    approver: "核验与独立审批",
+    viewer: "业务查看",
     auditor: "审计",
   };
   return (
     <Panel title="操作员与访问权限">
       <p className="muted">
-        角色与应用范围独立授权。系统管理员角色不自动具备申请或审批权。新建账号仅授予当前应用。
+        处理人员负责交易跟进和客服工单；审核人员核验材料并独立审批；管理人员分派任务、管理账号。角色与应用范围独立授权，管理角色不自动具备资金申请或审批权。新建账号仅授予当前应用。
       </p>
       <Alert>{r.error || error}</Alert>
       <form
@@ -1848,7 +1904,9 @@ function App() {
   const [user, setUser] = useState<User | null>(null),
     [ready, setReady] = useState(false),
     [appId, setAppId] = useState(""),
-    [page, setPage] = useState(location.hash.slice(1) || "overview"),
+    [page, setPage] = useState(routePage),
+    [routeKey, setRouteKey] = useState(location.hash),
+    [tradeDetail, setTradeDetail] = useState<string | null>(null),
     [notice, setNotice] = useState(""),
     [password, setPassword] = useState(false),
     [security, setSecurity] = useState(false),
@@ -1871,7 +1929,11 @@ function App() {
         setUser(null);
         setReady(true);
       },
-      hash = () => setPage(location.hash.slice(1) || "overview");
+      hash = () => {
+        setPage(routePage());
+        setRouteKey(location.hash);
+        setTradeDetail(null);
+      };
     window.addEventListener("session-expired", expired);
     window.addEventListener("hashchange", hash);
     return () => {
@@ -1890,7 +1952,7 @@ function App() {
   const visible = pages.filter(([key]) =>
     key === "operators"
       ? user.roles.includes("admin")
-      : key === "audit"
+      : key === "audit" || key === "team"
         ? user.roles.some((r) => ["admin", "auditor"].includes(r))
         : true,
   );
@@ -1909,9 +1971,24 @@ function App() {
         body: JSON.stringify(body),
       }),
     notify: setNotice,
+    openTrade: setTradeDetail,
   };
   const content = () => {
     switch (selected[0]) {
+      case "workspace":
+        return <WorkspaceHome c={c} />;
+      case "followups":
+        return <OperationsWorkspace c={c} />;
+      case "service":
+        return <ServiceWorkspace c={c} />;
+      case "reviews":
+        return (
+          <ReviewWorkspace c={c}>
+            <Operations c={c} showCases={false} />
+          </ReviewWorkspace>
+        );
+      case "team":
+        return <TeamWorkspace c={c} />;
       case "overview":
         return <Dashboard key={c.app.id} c={c} />;
       case "operations":
@@ -1934,30 +2011,35 @@ function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <Brand />
-        <div className="nav-label">交易管理</div>
-        <nav>
-          {visible.map(([key, label, icon]) => (
-            <a
-              key={key}
-              href={"#" + key}
-              className={selected[0] === key ? "active" : ""}
-              aria-current={selected[0] === key ? "page" : undefined}
-            >
-              <Icon name={icon} />
-              {label}
-              {key === "trades" && <span className="nav-dot" />}
-            </a>
+        <nav aria-label="后台导航">
+          {navigationGroups.map((group) => (
+            <div className="nav-group" key={group.label}>
+              <div className="nav-label">{group.label}</div>
+              {visible
+                .filter(([key]) => group.keys.includes(key))
+                .map(([key, label, icon]) => (
+                  <a
+                    key={key}
+                    href={"#" + key}
+                    className={selected[0] === key ? "active" : ""}
+                    aria-current={selected[0] === key ? "page" : undefined}
+                  >
+                    <Icon name={icon} />
+                    {label}
+                  </a>
+                ))}
+            </div>
           ))}
         </nav>
         <div className="sidebar-foot">
           <span className="status-dot" /> 独立管理服务
-          <small>MiShu Trade Admin · v0.1</small>
+          <small>MiShu Trade Admin · 交易服务</small>
         </div>
       </aside>
       <div className="workspace">
         <header className="topbar">
           <div>
-            <span className="breadcrumb">MiShu / 交易管理</span>
+            <span className="breadcrumb">MiShu / 交易服务工作台</span>
             <h1>{selected[1]}</h1>
           </div>
           <div className="topbar-tools">
@@ -1992,7 +2074,10 @@ function App() {
             <select
               aria-label="当前应用"
               value={app?.id || ""}
-              onChange={(e) => setAppId(e.target.value)}
+              onChange={(e) => {
+                setAppId(e.target.value);
+                setTradeDetail(null);
+              }}
             >
               {apps.data?.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -2041,7 +2126,7 @@ function App() {
           </div>
           <Alert>{apps.error || error}</Alert>
           {app ? (
-            <div key={app.id + selected[0]}>{content()}</div>
+            <div key={app.id + selected[0] + routeKey}>{content()}</div>
           ) : (
             <Empty>
               {apps.loading
@@ -2054,6 +2139,9 @@ function App() {
           </footer>
         </main>
       </div>
+      {app && tradeDetail && (
+        <Detail c={c} id={tradeDetail} onClose={() => setTradeDetail(null)} />
+      )}
       {notice && (
         <div className="toast" role="status">
           ✓ {notice}

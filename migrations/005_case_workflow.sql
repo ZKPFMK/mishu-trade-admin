@@ -1,0 +1,14 @@
+ALTER TABLE cases ADD COLUMN category text NOT NULL DEFAULT 'follow_up' CHECK(category IN ('follow_up','after_sales','dispute','other'));
+ALTER TABLE cases ADD COLUMN priority text NOT NULL DEFAULT 'normal' CHECK(priority IN ('normal','high','urgent'));
+ALTER TABLE cases ADD COLUMN stage text NOT NULL DEFAULT 'pending' CHECK(stage IN ('pending','in_progress','waiting_customer','pending_review','resolved'));
+ALTER TABLE cases ADD COLUMN due_at timestamptz;
+ALTER TABLE cases ADD COLUMN closed_at timestamptz;
+ALTER TABLE cases ADD COLUMN review_status text NOT NULL DEFAULT 'none' CHECK(review_status IN ('none','pending','accepted','returned'));
+ALTER TABLE cases ADD COLUMN review_submitted_by text REFERENCES operators(id);
+ALTER TABLE cases ADD COLUMN reviewer_id text REFERENCES operators(id);
+ALTER TABLE cases ADD COLUMN reviewed_at timestamptz;
+ALTER TABLE cases ADD COLUMN requires_review boolean NOT NULL DEFAULT false;
+ALTER TABLE case_notes ADD COLUMN event jsonb NOT NULL DEFAULT '{}';
+UPDATE cases SET stage=CASE WHEN state='closed' THEN 'resolved' WHEN owner_id IS NOT NULL THEN 'in_progress' ELSE 'pending' END;
+CREATE INDEX cases_work_queue ON cases(application_id,state,stage,owner_id,due_at);
+CREATE INDEX cases_updated ON cases(application_id,updated_at DESC,id DESC);

@@ -15,6 +15,11 @@ import {
 } from "../packages/contracts/src/index.js";
 import { exportSchema } from "../packages/core/src/exports.js";
 import {
+  caseCreate,
+  caseAction,
+  caseFilters,
+} from "../packages/contracts/src/workspace.js";
+import {
   managementInput,
   managementIntent,
   managementCommand,
@@ -99,20 +104,9 @@ const raw = {
     .strict(),
   Decision: z.object({ reason }).strict(),
   ApplicationJob: z.object({ application_id: identifier }).strict(),
-  CaseCreate: z
-    .object({
-      application_id: identifier,
-      trade_id: identifier.optional(),
-      title: z.string().trim().min(5).max(200),
-      note: z.string().trim().min(5).max(2000),
-    })
-    .strict(),
-  CaseUpdate: z
-    .object({
-      action: z.enum(["claim", "note", "close"]),
-      note: z.string().trim().min(5).max(2000),
-    })
-    .strict(),
+  CaseCreate: caseCreate,
+  CaseUpdate: caseAction,
+  CaseFilters: caseFilters,
   OperatorCreate: z
     .object({
       email: z.email().max(254),
@@ -239,6 +233,9 @@ add(
 );
 for (const name of [
   "overview",
+  "workspace",
+  "workspace/cases",
+  "case-assignees",
   "trades",
   "accounts",
   "journal-transactions",
@@ -290,7 +287,42 @@ add(
   "/admin/exports/{id}/files/{name}",
   "Native authenticated attachment; revalidates owner, scope and expiry",
 );
-add("post", "/admin/cases/{id}", "Claim, append note, or close owned case");
+add(
+  "get",
+  "/admin/cases/{id}",
+  "Read scoped case detail, workflow and internal handling history",
+);
+paths["/admin/cases/{id}"].get.parameters = paths[
+  "/admin/cases/{id}"
+].get.parameters.filter((p: any) => p.in !== "query");
+paths["/admin/cases/{id}"].get.parameters.push({
+  name: "application_id",
+  in: "query",
+  required: false,
+  schema: { type: "string" },
+  description:
+    "When supplied, must match the case application in addition to operator scope.",
+});
+add(
+  "post",
+  "/admin/cases/{id}",
+  "Claim, note, assign, update, submit independent review, review or close a case",
+);
+paths["/admin/cases/{id}"].post.description =
+  "Every action requires a reason in note. assign requires admin and a same-application enabled operator owner_id. review requires approver, decision accept/return, and a different owner/submitter. Other actions require operator; updates, submission and close require ownership. Pending reviews cannot be edited; disputes require accepted review before closing. This internal review never executes financial commands.";
+paths["/admin/workspace"].get.description =
+  "Current-application task counts, up to 12 open case summaries and 12 trade attention items. Counts cover all records. FUNDED and DELIVERED indicate follow-up opportunities, not proven SLA violations. Team workload is returned only for admin/auditor. No traffic or conversion metrics are inferred.";
+for (const [name, schema] of Object.entries(
+  (schemas.CaseFilters as any).properties,
+)) {
+  if (name !== "application_id")
+    paths["/admin/workspace/cases"].get.parameters.push({
+      name,
+      in: "query",
+      required: false,
+      schema,
+    });
+}
 add(
   "post",
   "/admin/reconciliation-findings/{id}/claim",

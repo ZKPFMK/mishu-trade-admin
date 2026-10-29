@@ -2,6 +2,8 @@
 
 独立于 MiShu 主平台、Prompt 审核服务的交易管理系统。提供订单、积分账户、完整流水、实际分账、生成扣费、对账、工单、双人审批和异步导出。
 
+新版以岗位工作为入口：默认进入 **我的工作台**，支持交易跟进、客服工单、独立核验和团队管理。原有图表位于“经营分析”，账务和受控资金审批继续保留。产品流程与首版范围见 [交易服务工作台设计](docs/workspace-design.md)。
+
 **已支持主平台历史与增量同步，以及独立审批后的真实积分订单退款、到期结算重试、暂停、补偿和冲正。管理命令需两端显式开启，业务仍由主平台原子执行。新安装默认模拟来源。**
 
 操作流程、配置与恢复详见 [真实交易运营处理](docs/management.md)。
@@ -67,6 +69,8 @@ npm test
 npm run test:ui
 npm run test:mishu -- /absolute/path/to/mishu-platform
 npm run test:management -- /absolute/path/to/mishu-platform
+# 只验证隔离的主平台 HTTP 管理链路（不启动浏览器）：
+npm run test:management -- /absolute/path/to/mishu-platform --api-only
 ```
 
 测试创建随机 PostgreSQL Schema 和临时文件夹，结束后删除；不会操作本地演示数据或其他系统数据。浏览器测试需要 Chromium；非当前机器可设置 `CHROMIUM_PATH`。截图在 `.local/ui-tests/`。

@@ -18,6 +18,13 @@ export const activeManagement = [
   "executing",
   "execution_unknown",
 ];
+function reviewAllows(c: any, type: string) {
+  return (
+    ["hold_trade", "release_trade"].includes(type) ||
+    !c.requires_review ||
+    c.review_status === "accepted"
+  );
+}
 export function managementView(row: any) {
   const {
     requester_security,
@@ -60,6 +67,7 @@ async function caseFor(
     "open_case_required",
   );
   insist(c.owner_id === actor.id, 403, "case_owner_only");
+  insist(reviewAllows(c, input.type), 409, "case_review_required");
   if (input.type !== "adjust_credit")
     insist(c.trade_id === input.target_id, 409, "case_target_mismatch");
   return c;
@@ -321,6 +329,7 @@ export async function decideManagement(
         409,
         "open_case_required",
       );
+      insist(reviewAllows(c, row.type), 409, "case_review_required");
       insist(
         await eligible(
           sql,
@@ -451,6 +460,7 @@ export async function executeManagement(db: pg.Pool, cfg: Config) {
           refusal = "approval_expired";
         else if (!c || c.state !== "open" || c.owner_id !== row.requester_id)
           refusal = "open_case_required";
+        else if (!reviewAllows(c, row.type)) refusal = "case_review_required";
         else if (
           !(await eligible(
             sql,

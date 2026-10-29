@@ -1,7 +1,6 @@
+import { workspaceRoutes } from "./workspace.js";
 import { overview } from "../../../packages/core/src/analytics.js";
 import { managementRoutes } from "./management.js";
-import { activeManagement } from "../../../packages/core/src/management.js";
-import { sourceAdapter } from "../../../packages/adapters/src/index.js";
 import Fastify from "fastify";
 import cookie from "@fastify/cookie";
 import rateLimit from "@fastify/rate-limit";
@@ -109,6 +108,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
     }
   });
   managementRoutes(api, db, cfg);
+  workspaceRoutes(api, db, cfg);
   api.get("/health", async () => {
     await db.query("SELECT 1");
     return { status: "ok", service: "mishu-trade-admin", version: "0.1.0" };
@@ -311,127 +311,6 @@ export async function createApp(db: pg.Pool, cfg: Config) {
         b.reason,
       );
     });
-  api.get("/admin/cases", async (req) => {
-    const { app } = await scoped(req);
-    return (
-      await db.query(
-        "SELECT c.*,o.name owner_name,COALESCE((SELECT jsonb_agg(jsonb_build_object('note',n.note,'at',n.created_at,'actor_id',n.actor_id) ORDER BY n.id) FROM case_notes n WHERE n.case_id=c.id),'[]') notes FROM cases c LEFT JOIN operators o ON o.id=c.owner_id WHERE c.application_id=$1 ORDER BY c.updated_at DESC LIMIT 200",
-        [app],
-      )
-    ).rows;
-  });
-  api.post("/admin/cases", async (req) => {
-    const user = await actor(db, req);
-    requireRole(user, "operator");
-    const b = z
-      .object({
-        application_id: identifier,
-        trade_id: identifier.optional(),
-        title: z.string().trim().min(5).max(200),
-        note: z.string().trim().min(5).max(2000),
-      })
-      .strict()
-      .parse(req.body);
-    requireScope(user, b.application_id);
-    const key = id("case");
-    await transaction(db, async (sql) => {
-      if (b.trade_id)
-        insist(
-          (
-            await sql.query(
-              "SELECT 1 FROM trade_projections WHERE application_id=$1 AND id=$2",
-              [b.application_id, b.trade_id],
-            )
-          ).rowCount,
-          404,
-          "trade_not_found",
-        );
-      await sql.query(
-        "INSERT INTO cases(id,application_id,trade_id,title,created_by) VALUES($1,$2,$3,$4,$5)",
-        [key, b.application_id, b.trade_id || null, b.title, user.id],
-      );
-      await sql.query(
-        "INSERT INTO case_notes(case_id,actor_id,note) VALUES($1,$2,$3)",
-        [key, user.id, b.note],
-      );
-      await audit(sql, b.application_id, user.id, "case.created", key, {
-        note: b.note,
-      });
-    });
-    return { id: key };
-  });
-  api.post("/admin/cases/:id", async (req) => {
-    const user = await actor(db, req);
-    requireRole(user, "operator");
-    const b = z
-      .object({
-        action: z.enum(["claim", "note", "close"]),
-        note: z.string().trim().min(5).max(2000),
-      })
-      .strict()
-      .parse(req.body);
-    return transaction(db, async (sql) => {
-      const key = identifier.parse((req.params as any).id),
-        c = (
-          await sql.query("SELECT * FROM cases WHERE id=$1 FOR UPDATE", [key])
-        ).rows[0];
-      insist(c, 404, "case_not_found");
-      requireScope(user, c.application_id);
-      insist(c.state === "open", 409, "case_closed");
-      if (b.action === "claim") {
-        insist(
-          !c.owner_id || c.owner_id === user.id,
-          409,
-          "case_already_claimed",
-        );
-        await sql.query("UPDATE cases SET owner_id=$2 WHERE id=$1", [
-          key,
-          user.id,
-        ]);
-      }
-      if (b.action === "close") {
-        insist(c.owner_id === user.id, 403, "case_owner_only");
-        insist(
-          !(
-            await sql.query(
-              "SELECT 1 FROM management_requests WHERE case_id=$1 AND state=ANY($2)",
-              [key, activeManagement],
-            )
-          ).rowCount,
-          409,
-          "case_has_active_operations",
-        );
-        const application = (
-          await sql.query("SELECT * FROM applications WHERE id=$1", [
-            c.application_id,
-          ])
-        ).rows[0];
-        if (c.trade_id && application.source_mode === "mishu") {
-          const current = await sourceAdapter(db, cfg, application).trade(
-            c.trade_id,
-          );
-          insist(
-            current.operational_hold?.case_id !== key,
-            409,
-            "case_has_active_hold",
-          );
-        }
-        await sql.query(
-          "UPDATE cases SET state='closed',resolution=$2 WHERE id=$1",
-          [key, b.note],
-        );
-      }
-      await sql.query(
-        "INSERT INTO case_notes(case_id,actor_id,note) VALUES($1,$2,$3)",
-        [key, user.id, b.note],
-      );
-      await sql.query("UPDATE cases SET updated_at=now() WHERE id=$1", [key]);
-      await audit(sql, c.application_id, user.id, "case." + b.action, key, {
-        note: b.note,
-      });
-      return { ok: true };
-    });
-  });
   function jobView(j: any) {
     const { payload, lease_token, lease_until, ...safe } = j;
     const { directory, ...result } = safe.result || {};

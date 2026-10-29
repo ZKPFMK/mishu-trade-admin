@@ -135,7 +135,7 @@ export function Brand() {
   return (
     <a
       className="brand"
-      href="#overview"
+      href="#workspace"
       aria-label="密树科技 MiShu 交易管理工作台"
     >
       <img

@@ -114,7 +114,7 @@ export function managementRoutes(
           "trade_not_found",
         );
       await sql.query(
-        "INSERT INTO cases(id,application_id,trade_id,title,created_by,owner_id) VALUES($1,$2,$3,$4,$5,$5)",
+        "INSERT INTO cases(id,application_id,trade_id,title,created_by,owner_id,stage) VALUES($1,$2,$3,$4,$5,$5,'in_progress')",
         [key, b.application_id, b.trade_id || null, b.title, u.id],
       );
       await sql.query(

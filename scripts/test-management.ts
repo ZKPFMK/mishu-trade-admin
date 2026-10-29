@@ -14,6 +14,7 @@ import { importSnapshot, queueJob } from "../packages/core/src/sync.js";
 import { reconcile } from "../packages/core/src/reconciliation.js";
 
 const platform = path.resolve(process.argv[2] || "../mishu-platform");
+const apiOnly = process.argv.includes("--api-only");
 const child = fork(path.join(platform, "scripts/trade-admin-fixture.ts"), {
   cwd: platform,
   execArgv: ["--import", "tsx"],
@@ -355,79 +356,83 @@ try {
   ]);
 
   // Exercise the shipped UI with a new synthetic purchase, two separate browser sessions and actual source execution.
-  const uiTrade = await command("fund");
-  await sync();
-  const base = await f.api.listen({ host: "127.0.0.1", port: 0 });
-  browser = await chromium.launch({
-    headless: true,
-    executablePath:
-      process.env.CHROMIUM_PATH ||
-      "/Users/dj/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
-  });
-  const one = await browser.newContext({
-      viewport: { width: 1440, height: 1000 },
-    }),
-    two = await browser.newContext({ viewport: { width: 1440, height: 1000 } }),
-    p = await one.newPage(),
-    q = await two.newPage(),
-    errors: string[] = [];
-  for (const page of [p, q])
-    page.on("pageerror", (e) => errors.push(e.message));
-  async function login(page: typeof p, name: string) {
-    await page.goto(base);
-    await page.getByLabel("账号邮箱").fill(name + "@test.local");
-    await page.getByLabel("密码", { exact: true }).fill(password);
-    await page
-      .getByRole("button", { name: "登录工作台", exact: false })
-      .click();
-    await page
-      .getByRole("heading", { name: "工作概览", exact: true })
-      .waitFor();
-    await page.goto(base + "/#operations");
+  if (!apiOnly) {
+    const uiTrade = await command("fund");
+    await sync();
+    const base = await f.api.listen({ host: "127.0.0.1", port: 0 });
+    browser = await chromium.launch({
+      headless: true,
+      executablePath:
+        process.env.CHROMIUM_PATH ||
+        "/Users/dj/Library/Caches/ms-playwright/chromium-1234/chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+    });
+    const one = await browser.newContext({
+        viewport: { width: 1440, height: 1000 },
+      }),
+      two = await browser.newContext({
+        viewport: { width: 1440, height: 1000 },
+      }),
+      p = await one.newPage(),
+      q = await two.newPage(),
+      errors: string[] = [];
+    for (const page of [p, q])
+      page.on("pageerror", (e) => errors.push(e.message));
+    async function login(page: typeof p, name: string) {
+      await page.goto(base);
+      await page.getByLabel("账号邮箱").fill(name + "@test.local");
+      await page.getByLabel("密码", { exact: true }).fill(password);
+      await page
+        .getByRole("button", { name: "登录工作台", exact: false })
+        .click();
+      await page
+        .getByRole("heading", { name: "我的工作台", exact: true })
+        .waitFor();
+      await page.goto(base + "/#reviews");
+    }
+    await login(p, "requester");
+    await p.getByRole("button", { name: "发起运营处理", exact: true }).click();
+    await p.getByLabel("订单编号", { exact: true }).fill(uiTrade.id);
+    await p
+      .getByLabel("处理依据与凭证编号")
+      .fill("用户反馈并已核对订单尚未交付，保留完整核验依据");
+    await p.getByRole("button", { name: "新建并领取处理工单" }).click();
+    await p
+      .getByLabel("申请理由", { exact: true })
+      .fill("核验通过，退回未交付订单的托管积分");
+    await p.getByRole("button", { name: "核对来源状态" }).click();
+    await p.getByLabel("当前账号密码", { exact: true }).fill(password);
+    await p.getByRole("button", { name: "提交独立审批", exact: true }).click();
+    await p
+      .getByRole("dialog", { name: "发起运营处理" })
+      .waitFor({ state: "hidden" });
+    await login(q, "approver");
+    await q.getByRole("button", { name: "独立审批", exact: true }).click();
+    await q
+      .getByLabel("处理意见", { exact: true })
+      .fill("独立审核凭证和当前交付状态，同意本次退款");
+    await q.getByLabel("当前账号密码", { exact: true }).fill(password);
+    await q.getByRole("button", { name: "确认处理", exact: true }).click();
+    await q
+      .getByRole("dialog", { name: "独立审批确认" })
+      .waitFor({ state: "hidden" });
+    await executeManagement(f.db, f.cfg);
+    await sync();
+    assert.equal(
+      (await command("state", { trade: uiTrade.id })).status,
+      "REFUNDED",
+    );
+    await p.reload();
+    await p.getByRole("heading", { name: "运营处理与独立审批" }).waitFor();
+    fs.mkdirSync(".local/management-ui", { recursive: true });
+    await p.screenshot({
+      path: ".local/management-ui/requests.png",
+      fullPage: true,
+    });
+    await p.getByRole("button", { name: "安全验证", exact: true }).click();
+    await p.getByRole("dialog", { name: "账号安全验证" }).waitFor();
+    await p.getByText("尚未绑定验证器", { exact: true }).waitFor();
+    assert.deepEqual(errors, []);
   }
-  await login(p, "requester");
-  await p.getByRole("button", { name: "发起运营处理", exact: true }).click();
-  await p.getByLabel("订单编号", { exact: true }).fill(uiTrade.id);
-  await p
-    .getByLabel("处理依据与凭证编号")
-    .fill("用户反馈并已核对订单尚未交付，保留完整核验依据");
-  await p.getByRole("button", { name: "新建并领取处理工单" }).click();
-  await p
-    .getByLabel("申请理由", { exact: true })
-    .fill("核验通过，退回未交付订单的托管积分");
-  await p.getByRole("button", { name: "核对来源状态" }).click();
-  await p.getByLabel("当前账号密码", { exact: true }).fill(password);
-  await p.getByRole("button", { name: "提交独立审批", exact: true }).click();
-  await p
-    .getByRole("dialog", { name: "发起运营处理" })
-    .waitFor({ state: "hidden" });
-  await login(q, "approver");
-  await q.getByRole("button", { name: "独立审批", exact: true }).click();
-  await q
-    .getByLabel("处理意见", { exact: true })
-    .fill("独立审核凭证和当前交付状态，同意本次退款");
-  await q.getByLabel("当前账号密码", { exact: true }).fill(password);
-  await q.getByRole("button", { name: "确认处理", exact: true }).click();
-  await q
-    .getByRole("dialog", { name: "独立审批确认" })
-    .waitFor({ state: "hidden" });
-  await executeManagement(f.db, f.cfg);
-  await sync();
-  assert.equal(
-    (await command("state", { trade: uiTrade.id })).status,
-    "REFUNDED",
-  );
-  await p.reload();
-  await p.getByRole("heading", { name: "运营处理与独立审批" }).waitFor();
-  fs.mkdirSync(".local/management-ui", { recursive: true });
-  await p.screenshot({
-    path: ".local/management-ui/requests.png",
-    fullPage: true,
-  });
-  await p.getByRole("button", { name: "安全验证", exact: true }).click();
-  await p.getByRole("dialog", { name: "账号安全验证" }).waitFor();
-  await p.getByText("尚未绑定验证器", { exact: true }).waitFor();
-  assert.deepEqual(errors, []);
   const run = await queueJob(f.db, app, null, "reconcile"),
     result = await reconcile(f.db, app, run);
   assert.equal(result.outcome, "passed", JSON.stringify(result));
@@ -440,7 +445,11 @@ try {
     0,
   );
   console.log(
-    "Management integration passed: real HTTP refund/settlement/holds/compensation/reversal, two-person approval, scope and MFA gates, case closure, revoked permissions, lost response recovery without double spending, browser workflow and balanced reconciliation.",
+    "Management integration passed: real HTTP refund/settlement/holds/compensation/reversal, two-person approval, scope and MFA gates, case closure, revoked permissions, lost response recovery without double spending, " +
+      (apiOnly
+        ? "API-only mode (browser checks skipped), "
+        : "browser workflow, ") +
+      "balanced reconciliation.",
   );
 } finally {
   await browser?.close();

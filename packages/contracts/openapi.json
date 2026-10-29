@@ -245,6 +245,196 @@
         "description": "Orders, state distribution and license types are filtered by order creation time; financial trends, payout components and top assets use journal time. Account balances remain current snapshots. Continuous trend buckets include zero-activity dates and cover the entire range in at most 90 equal-day buckets. Exact integer aggregates are decimal strings. Bounded ranges include the immediately preceding equal-length comparison period. See docs/analytics.md."
       }
     },
+    "/admin/workspace": {
+      "get": {
+        "summary": "Read workspace",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        },
+        "description": "Current-application task counts, up to 12 open case summaries and 12 trade attention items. Counts cover all records. FUNDED and DELIVERED indicate follow-up opportunities, not proven SLA violations. Team workload is returned only for admin/auditor. No traffic or conversion metrics are inferred."
+      }
+    },
+    "/admin/workspace/cases": {
+      "get": {
+        "summary": "Read workspace/cases",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": "all",
+              "type": "string",
+              "enum": [
+                "all",
+                "mine",
+                "unassigned",
+                "overdue",
+                "review"
+              ]
+            }
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "follow_up",
+                "after_sales",
+                "dispute",
+                "other"
+              ]
+            }
+          },
+          {
+            "name": "priority",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "normal",
+                "high",
+                "urgent"
+              ]
+            }
+          },
+          {
+            "name": "stage",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "in_progress",
+                "waiting_customer",
+                "pending_review",
+                "resolved"
+              ]
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 160
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100000
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/case-assignees": {
+      "get": {
+        "summary": "Read case-assignees",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
     "/admin/trades": {
       "get": {
         "summary": "Read trades",
@@ -1691,8 +1881,52 @@
       }
     },
     "/admin/cases/{id}": {
+      "get": {
+        "summary": "Read scoped case detail, workflow and internal handling history",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "When supplied, must match the case application in addition to operator scope."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      },
       "post": {
-        "summary": "Claim, append note, or close owned case",
+        "summary": "Claim, note, assign, update, submit independent review, review or close a case",
         "security": [
           {
             "sessionCookie": [],
@@ -1726,6 +1960,7 @@
             "description": "State/version/idempotency conflict"
           }
         },
+        "description": "Every action requires a reason in note. assign requires admin and a same-application enabled operator owner_id. review requires approver, decision accept/return, and a different owner/submitter. Other actions require operator; updates, submission and close require ownership. Pending reviews cannot be edited; disputes require accepted review before closing. This internal review never executes financial commands.",
         "requestBody": {
           "required": true,
           "content": {
@@ -5500,12 +5735,45 @@
             "type": "string",
             "minLength": 5,
             "maxLength": 2000
+          },
+          "category": {
+            "default": "follow_up",
+            "type": "string",
+            "enum": [
+              "follow_up",
+              "after_sales",
+              "dispute",
+              "other"
+            ]
+          },
+          "priority": {
+            "default": "normal",
+            "type": "string",
+            "enum": [
+              "normal",
+              "high",
+              "urgent"
+            ]
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "application_id",
           "title",
-          "note"
+          "note",
+          "category",
+          "priority"
         ],
         "additionalProperties": false
       },
@@ -5517,18 +5785,133 @@
             "enum": [
               "claim",
               "note",
-              "close"
+              "close",
+              "assign",
+              "update",
+              "submit_review",
+              "review"
             ]
           },
           "note": {
             "type": "string",
             "minLength": 5,
             "maxLength": 2000
+          },
+          "owner_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "follow_up",
+              "after_sales",
+              "dispute",
+              "other"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "high",
+              "urgent"
+            ]
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "waiting_customer"
+            ]
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "accept",
+              "return"
+            ]
           }
         },
         "required": [
           "action",
           "note"
+        ],
+        "additionalProperties": false
+      },
+      "CaseFilters": {
+        "type": "object",
+        "properties": {
+          "application_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "scope": {
+            "default": "all",
+            "type": "string",
+            "enum": [
+              "all",
+              "mine",
+              "unassigned",
+              "overdue",
+              "review"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "follow_up",
+              "after_sales",
+              "dispute",
+              "other"
+            ]
+          },
+          "priority": {
+            "type": "string",
+            "enum": [
+              "normal",
+              "high",
+              "urgent"
+            ]
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "in_progress",
+              "waiting_customer",
+              "pending_review",
+              "resolved"
+            ]
+          },
+          "q": {
+            "type": "string",
+            "maxLength": 160
+          },
+          "page": {
+            "default": 1,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          }
+        },
+        "required": [
+          "application_id",
+          "scope",
+          "page"
         ],
         "additionalProperties": false
       },

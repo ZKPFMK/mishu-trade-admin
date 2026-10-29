@@ -288,6 +288,18 @@ pre {
   display: grid;
   gap: 4px;
   overflow: auto;
+  min-height: 0;
+  flex: 1;
+}
+.nav-group {
+  display: grid;
+  gap: 3px;
+}
+.nav-group .nav-label {
+  margin: 18px 16px 6px;
+}
+.nav-group:first-child .nav-label {
+  margin-top: 24px;
 }
 .sidebar nav a {
   display: flex;
@@ -1097,6 +1109,9 @@ footer {
     flex-shrink: 0;
     padding: 7px 10px;
     font-size: 12px;
+  }
+  .sidebar .nav-group {
+    display: contents;
   }
   .sidebar nav .icon {
     width: 15px;
