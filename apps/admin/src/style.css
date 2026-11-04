@@ -1285,3 +1285,27 @@ a.text-button {
     padding: 12px;
   }
 }
+
+.access-summary {
+  margin: 0 0 20px;
+  padding: 12px 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--color-panel);
+}
+.access-summary > div {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+.access-summary > div + div {
+  margin-top: 8px;
+}
+.access-summary .mono {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.access-summary p {
+  margin: 8px 0 0;
+}

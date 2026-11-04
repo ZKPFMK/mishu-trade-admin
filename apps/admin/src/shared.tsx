@@ -16,6 +16,43 @@ export type Context = {
   mutate: (path: string, body?: unknown) => Promise<any>;
   notify: (text: string) => void;
 };
+export const roleLabels: Record<string, string> = {
+  admin: "系统管理员",
+  operator: "运营处理",
+  approver: "独立审批",
+  viewer: "运营查看",
+  auditor: "审计",
+};
+export function AccessSummary({
+  user,
+  app,
+  applicationCount,
+}: {
+  user: User;
+  app: { name: string } | undefined;
+  applicationCount: number;
+}) {
+  return (
+    <section className="access-summary" aria-label="当前登录身份">
+      <div>
+        <span className="caption">当前登录</span>
+        <strong>{user.name}</strong>
+        <span className="mono">{user.email}</span>
+      </div>
+      <div aria-label="我的岗位">
+        {user.roles.map((role) => (
+          <span className="badge" key={role}>
+            {roleLabels[role] || role}
+          </span>
+        ))}
+      </div>
+      <p className="caption">
+        当前授权应用：{app?.name || "尚未分配"} · 共 {applicationCount}{" "}
+        个授权应用
+      </p>
+    </section>
+  );
+}
 export function Badge({ value }: { value: string }) {
   return (
     <span

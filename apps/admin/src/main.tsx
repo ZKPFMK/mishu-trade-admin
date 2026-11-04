@@ -1,4 +1,6 @@
 import {
+  AccessSummary,
+  roleLabels,
   Badge,
   Alert,
   Empty,
@@ -60,7 +62,7 @@ const pages: [string, string, IconName][] = [
 ];
 function Login({ onLogin }: { onLogin: () => void }) {
   const appearance = useAppearance(),
-    [email, setEmail] = useState("admin@trade-admin.local"),
+    [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [otp, setOtp] = useState(""),
     [error, setError] = useState(""),
@@ -90,7 +92,9 @@ function Login({ onLogin }: { onLogin: () => void }) {
         </div>
       </div>
       <Panel title="登录交易管理工作台">
-        <p className="muted">使用独立后台账号登录</p>
+        <p className="muted">
+          所有后台成员均使用个人账号登录，系统按岗位和应用授权提供工作入口。
+        </p>
         <form
           onSubmit={async (e) => {
             e.preventDefault();
@@ -112,6 +116,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
             账号邮箱
             <input
               type="email"
+              placeholder="请输入你的工作邮箱"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -143,7 +148,7 @@ function Login({ onLogin }: { onLogin: () => void }) {
           </button>
         </form>
         <p className="caption">
-          使用管理员分配的账号登录；首次使用后请修改密码并绑定身份验证器。
+          使用管理员分配给本人的账号，请勿共用。需要开通账号或调整权限时，请联系管理员。首次使用后请修改密码并绑定身份验证器。
         </p>
       </Panel>
       <footer>密树科技 MiShu · 交易管理</footer>
@@ -1547,13 +1552,7 @@ function Operators({ c }: { c: Context }) {
     [role, setRole] = useState("viewer"),
     [secret, setSecret] = useState(""),
     [error, setError] = useState("");
-  const labels: Record<string, string> = {
-    admin: "系统管理员",
-    operator: "申请与处理",
-    approver: "独立审批",
-    viewer: "运营查看",
-    auditor: "审计",
-  };
+  const labels = roleLabels;
   return (
     <Panel title="操作员与访问权限">
       <p className="muted">
@@ -1970,6 +1969,11 @@ function App() {
               · 最近检查 {date(app?.last_poll_at)}
             </span>
           </div>
+          <AccessSummary
+            user={user}
+            app={app}
+            applicationCount={apps.data?.length || 0}
+          />
           <Alert>{apps.error || error}</Alert>
           {app ? (
             <div key={app.id + selected[0]}>{content()}</div>

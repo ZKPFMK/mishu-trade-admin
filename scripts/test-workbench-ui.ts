@@ -50,6 +50,14 @@ try {
   page.on("pageerror", (e) => errors.push(e.message));
   const login = async (name: string, target = page) => {
     await target.goto(base);
+    assert.equal(
+      await target.getByLabel("账号邮箱").inputValue(),
+      "",
+      "shared login must not prefill an administrator account",
+    );
+    await target
+      .getByText("所有后台成员均使用个人账号登录", { exact: false })
+      .waitFor();
     await target.getByLabel("账号邮箱").fill(name + "@test.local");
     await target
       .getByLabel("密码", { exact: true })
@@ -67,6 +75,14 @@ try {
     await page.getByRole("heading", { name: label, exact: true }).waitFor();
   };
   await login("requester");
+  const identity = page.getByRole("region", {
+    name: "当前登录身份",
+    exact: true,
+  });
+  await identity.getByText("requester@test.local", { exact: true }).waitFor();
+  await identity.getByText("系统管理员", { exact: true }).waitFor();
+  await identity.getByText("运营处理", { exact: true }).waitFor();
+  await identity.getByText("共 2 个授权应用", { exact: false }).waitFor();
   assert.equal(await page.getByRole("link", { name: /待我审批/ }).count(), 0);
   await page.getByRole("link", { name: /我的开放工单/ }).click();
   await page.getByText("共 117 条", { exact: false }).waitFor();
@@ -209,6 +225,22 @@ try {
     approvalPage = await approvalContext.newPage();
   approvalPage.on("pageerror", (e) => errors.push(e.message));
   await login("approver", approvalPage);
+  const approvalIdentity = approvalPage.getByRole("region", {
+    name: "当前登录身份",
+    exact: true,
+  });
+  await approvalIdentity.getByText("独立审批", { exact: true }).waitFor();
+  assert.equal(
+    await approvalIdentity.getByText("系统管理员", { exact: true }).count(),
+    0,
+  );
+  assert.equal(
+    await approvalPage
+      .locator("nav")
+      .getByRole("link", { name: "操作员", exact: true })
+      .count(),
+    0,
+  );
   const pending = approvalPage.getByRole("link", { name: /待我审批/ });
   await pending.locator("strong").filter({ hasText: "1" }).waitFor();
   await pending.click();
@@ -217,6 +249,32 @@ try {
     .waitFor();
   assert.ok(approvalPage.url().includes("inbox=approval"));
   await approvalContext.close();
+  const auditorContext = await browser.newContext(),
+    auditorPage = await auditorContext.newPage();
+  auditorPage.on("pageerror", (e) => errors.push(e.message));
+  await login("auditor", auditorPage);
+  await auditorPage
+    .getByRole("region", { name: "当前登录身份", exact: true })
+    .getByText("审计", { exact: true })
+    .waitFor();
+  assert.equal(
+    await auditorPage
+      .getByRole("link", { name: /待我审批|我的开放工单/ })
+      .count(),
+    0,
+  );
+  await auditorPage
+    .locator("nav")
+    .getByRole("link", { name: "操作审计", exact: true })
+    .waitFor();
+  assert.equal(
+    await auditorPage
+      .locator("nav")
+      .getByRole("link", { name: "操作员", exact: true })
+      .count(),
+    0,
+  );
+  await auditorContext.close();
   // Only synthetic read models change here; no real-source command is sent.
   f.cfg.managementEnabled = true;
   await f.db.query(
