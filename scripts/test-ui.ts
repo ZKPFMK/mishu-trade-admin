@@ -174,6 +174,7 @@ try {
     fullPage: true,
     animations: "disabled",
   });
+  await page.getByRole("link", { name: "异常工单", exact: true }).click();
   await page.getByRole("button", { name: "新建工单" }).click();
   await page.getByLabel("工单标题").fill("浏览器测试退款情况跟进");
   await page.getByLabel("处理理由").fill("检查退款已执行且同步完毕");

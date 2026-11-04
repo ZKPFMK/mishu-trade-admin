@@ -1,15 +1,32 @@
+import {
+  Badge,
+  Alert,
+  Empty,
+  Panel,
+  Modal,
+  ActionForm,
+  type User,
+  type Context,
+} from "./shared";
+import {
+  href,
+  useRoute,
+  useQuery,
+  pageNumber,
+  navigate,
+  useRememberRoute,
+  rememberedHref,
+  clearNavigation,
+  previousListPage,
+} from "./navigation";
+import { Workbench, Cases, WorklistPager, Findings } from "./workbench";
 import { Dashboard } from "./overview";
 import {
   ManagementPanel,
   ManagementDialog,
   SecurityDialog,
 } from "./management";
-import React, {
-  useEffect,
-  useState,
-  type FormEvent,
-  type ReactNode,
-} from "react";
+import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   Brand,
@@ -27,21 +44,6 @@ import {
   errorText,
 } from "./api";
 import "./style.css";
-type User = {
-  id: string;
-  email: string;
-  name: string;
-  roles: string[];
-  scopes: string[];
-  csrf: string;
-};
-type Context = {
-  user: User;
-  app: any;
-  url: (path: string, extra?: Record<string, string>) => string;
-  mutate: (path: string, body?: unknown) => Promise<any>;
-  notify: (text: string) => void;
-};
 const pages: [string, string, IconName][] = [
   ["overview", "工作概览", "overview"],
   ["trades", "全部订单", "submissions"],
@@ -56,187 +58,6 @@ const pages: [string, string, IconName][] = [
   ["operators", "操作员", "applications"],
   ["audit", "操作审计", "audit"],
 ];
-function Badge({ value }: { value: string }) {
-  return (
-    <span
-      className={
-        "badge " +
-        ([
-          "COMPLETED",
-          "RESOLVED_SELLER",
-          "succeeded",
-          "passed",
-          "applied",
-          "resolved",
-          "settled",
-        ].includes(value)
-          ? "ok"
-          : [
-                "failed",
-                "execution_failed",
-                "DISPUTED",
-                "differences",
-                "quarantined",
-              ].includes(value)
-            ? "danger"
-            : [
-                  "pending_approval",
-                  "approved",
-                  "FUNDED",
-                  "DELIVERED",
-                  "running",
-                  "blocked",
-                  "execution_unknown",
-                  "incomplete",
-                ].includes(value)
-              ? "warn"
-              : "")
-      }
-    >
-      {statusNames[value] || value}
-    </span>
-  );
-}
-function Alert({ children }: { children: ReactNode }) {
-  return children ? (
-    <div className="alert" role="alert">
-      {children}
-    </div>
-  ) : null;
-}
-function Empty({ children = "暂无记录" }: { children?: ReactNode }) {
-  return (
-    <div className="empty">
-      <Icon name="submissions" />
-      <p>{children}</p>
-    </div>
-  );
-}
-function Panel({
-  title,
-  children,
-  action,
-}: {
-  title?: string;
-  children: ReactNode;
-  action?: ReactNode;
-}) {
-  return (
-    <section className="panel">
-      {title && (
-        <div className="panel-heading">
-          <h2>{title}</h2>
-          {action}
-        </div>
-      )}
-      {children}
-    </section>
-  );
-}
-function Modal({
-  title,
-  onClose,
-  children,
-}: {
-  title: string;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
-  return (
-    <div
-      className="modal-backdrop"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <section
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        className="modal"
-      >
-        <div className="panel-heading">
-          <h2>{title}</h2>
-          <button
-            type="button"
-            className="icon-button"
-            onClick={onClose}
-            aria-label="关闭弹窗"
-          >
-            ×
-          </button>
-        </div>
-        {children}
-      </section>
-    </div>
-  );
-}
-function ActionForm({
-  title,
-  description,
-  label = "确认",
-  onClose,
-  onSubmit,
-}: {
-  title: string;
-  description: ReactNode;
-  label?: string;
-  onClose: () => void;
-  onSubmit: (reason: string) => Promise<void>;
-}) {
-  const [reason, setReason] = useState(""),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
-  return (
-    <Modal title={title} onClose={onClose}>
-      <p className="muted">{description}</p>
-      <form
-        onSubmit={async (e) => {
-          e.preventDefault();
-          setBusy(true);
-          try {
-            await onSubmit(reason);
-            onClose();
-          } catch (e) {
-            setError((e as Error).message);
-          } finally {
-            setBusy(false);
-          }
-        }}
-      >
-        <label>
-          处理理由
-          <textarea
-            autoFocus
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            required
-            minLength={5}
-            maxLength={1000}
-            rows={4}
-            placeholder="请填写至少 5 个字，作为操作与审批依据"
-          />
-        </label>
-        <Alert>{error}</Alert>
-        <div className="form-actions">
-          <button type="button" onClick={onClose}>
-            取消
-          </button>
-          <button className="primary" disabled={busy}>
-            {busy ? "正在提交…" : label}
-          </button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
 function Login({ onLogin }: { onLogin: () => void }) {
   const appearance = useAppearance(),
     [email, setEmail] = useState("admin@trade-admin.local"),
@@ -413,7 +234,7 @@ function ExportDialog({
     </Modal>
   );
 }
-function Journal({ tx }: { tx: any }) {
+function Journal({ tx, c }: { tx: any; c: Context }) {
   return (
     <details className="journal">
       <summary>
@@ -435,7 +256,14 @@ function Journal({ tx }: { tx: any }) {
           <tbody>
             {tx.entries.map((e: any) => (
               <tr key={e.id}>
-                <td className="mono">{e.account_id}</td>
+                <td className="mono">
+                  <a
+                    className="text-button"
+                    href={href("accounts", c.app.id, { q: e.account_id })}
+                  >
+                    {e.account_id}
+                  </a>
+                </td>
                 <td>
                   {
                     (
@@ -522,10 +350,26 @@ function Detail({
               托管余额<strong>{money(d.escrow)} CREDIT</strong>
             </span>
             <span>
-              买家<strong>{t.buyer_id}</strong>
+              买家
+              <strong>
+                <a
+                  className="text-button"
+                  href={href("accounts", c.app.id, { q: t.buyer_id })}
+                >
+                  {t.buyer_id}
+                </a>
+              </strong>
             </span>
             <span>
-              卖家<strong>{t.seller_id}</strong>
+              卖家
+              <strong>
+                <a
+                  className="text-button"
+                  href={href("accounts", c.app.id, { q: t.seller_id })}
+                >
+                  {t.seller_id}
+                </a>
+              </strong>
             </span>
             <span>
               交付核验
@@ -534,6 +378,32 @@ function Detail({
             <span>
               来源版本<strong>{t.version}</strong>
             </span>
+          </div>
+          <div className="form-actions">
+            <a
+              className="button"
+              href={href("journal-transactions", c.app.id, { q: t.id })}
+            >
+              关联流水
+            </a>
+            <a
+              className="button"
+              href={href("operations", c.app.id, {
+                tab: "cases",
+                trade_id: t.id,
+              })}
+            >
+              关联工单
+            </a>
+            <a
+              className="button"
+              href={href("operations", c.app.id, {
+                tab: "requests",
+                target_id: t.id,
+              })}
+            >
+              关联审批
+            </a>
           </div>
           <h3>状态时间线</h3>
           <ol className="timeline">
@@ -547,7 +417,7 @@ function Detail({
           </ol>
           <h3>关联记账事务</h3>
           {d.journals.map((j: any) => (
-            <Journal key={j.id} tx={j} />
+            <Journal key={j.id} tx={j} c={c} />
           ))}
           <h3>处理申请</h3>
           {d.operations.length ? (
@@ -637,16 +507,32 @@ function Detail({
   );
 }
 function DataPage({ c, dataset }: { c: Context; dataset: string }) {
-  const [draft, setDraft] = useState({ q: "", status: "", from: "", to: "" }),
-    [filter, setFilter] = useState<Record<string, string>>({}),
-    [page, setPage] = useState(1),
-    [jump, setJump] = useState("1"),
-    [cursor, setCursor] = useState<string | undefined>(),
-    [history, setHistory] = useState<Array<{ page: number; cursor?: string }>>(
-      [],
+  const { params, update } = useQuery(c.app.id),
+    filter = Object.fromEntries(
+      ["q", "status", "from", "to", "account_id"]
+        .filter((k) => params[k])
+        .map((k) => [k, params[k]]),
     ),
-    [exporting, setExporting] = useState(false),
-    [detail, setDetail] = useState<string | null>(null);
+    page = pageNumber(params.page),
+    cursor = params.cursor,
+    detail = params.detail,
+    [draft, setDraft] = useState({
+      q: params.q || "",
+      status: params.status || "",
+      from: params.from || "",
+      to: params.to || "",
+    }),
+    [jump, setJump] = useState(String(page)),
+    [exporting, setExporting] = useState(false);
+  useEffect(() => {
+    setDraft({
+      q: params.q || "",
+      status: params.status || "",
+      from: params.from || "",
+      to: params.to || "",
+    });
+  }, [params.q, params.status, params.from, params.to]);
+  useEffect(() => setJump(String(page)), [page]);
   const filters = {
       ...filter,
       page: String(page),
@@ -702,13 +588,12 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
         className="filter-bar"
         onSubmit={(e) => {
           e.preventDefault();
-          setFilter(
-            Object.fromEntries(Object.entries(draft).filter(([, v]) => v)),
-          );
-          setPage(1);
-          setJump("1");
-          setCursor(undefined);
-          setHistory([]);
+          update({
+            ...draft,
+            page: undefined,
+            cursor: undefined,
+            detail: undefined,
+          });
         }}
       >
         <input
@@ -756,6 +641,22 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
           导出记录
         </button>
       </form>
+      {params.account_id && (
+        <p className="caption">
+          账户流水：<code>{params.account_id}</code>{" "}
+          <button
+            onClick={() =>
+              update({
+                account_id: undefined,
+                page: undefined,
+                cursor: undefined,
+              })
+            }
+          >
+            清除账户筛选
+          </button>
+        </p>
+      )}
       <Alert>{r.error}</Alert>
       <Panel>
         <div className="panel-heading">
@@ -810,7 +711,7 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
                         <td>
                           <button
                             className="text-button mono"
-                            onClick={() => setDetail(row.id)}
+                            onClick={() => update({ detail: row.id })}
                           >
                             {row.id}
                           </button>
@@ -821,14 +722,39 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
                           <Badge value={row.status} />
                         </td>
                         <td>
-                          {row.buyer_id}
-                          <small className="block">{row.seller_id}</small>
+                          <a
+                            className="text-button"
+                            href={href("accounts", c.app.id, {
+                              q: row.buyer_id,
+                            })}
+                          >
+                            {row.buyer_id}
+                          </a>
+                          <small className="block">
+                            <a
+                              className="text-button"
+                              href={href("accounts", c.app.id, {
+                                q: row.seller_id,
+                              })}
+                            >
+                              {row.seller_id}
+                            </a>
+                          </small>
                         </td>
                         <td className="date-cell">{date(row.created_at)}</td>
                       </>
                     ) : dataset === "accounts" ? (
                       <>
-                        <td className="mono">{row.id}</td>
+                        <td className="mono">
+                          <a
+                            className="text-button"
+                            href={href("journal-transactions", c.app.id, {
+                              account_id: row.id,
+                            })}
+                          >
+                            {row.id}
+                          </a>
+                        </td>
                         <td>
                           <Badge value={row.kind} />
                         </td>
@@ -838,7 +764,16 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
                       </>
                     ) : dataset === "generation-jobs" ? (
                       <>
-                        <td className="mono">{row.id}</td>
+                        <td className="mono">
+                          <a
+                            className="text-button"
+                            href={href("journal-transactions", c.app.id, {
+                              q: row.id,
+                            })}
+                          >
+                            {row.id}
+                          </a>
+                        </td>
                         <td>{row.user_id}</td>
                         <td>
                           <Badge value={row.status} />
@@ -851,9 +786,31 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
                     ) : (
                       <>
                         <td>
-                          <Journal tx={row} />
+                          <Journal tx={row} c={c} />
                         </td>
-                        <td className="mono">{row.reference_id}</td>
+                        <td className="mono">
+                          <a
+                            className="text-button"
+                            href={href(
+                              row.kind === "settle" ||
+                                row.kind === "refund" ||
+                                row.kind === "fund"
+                                ? "trades"
+                                : "journal-transactions",
+                              c.app.id,
+                              row.kind === "settle" ||
+                                row.kind === "refund" ||
+                                row.kind === "fund"
+                                ? {
+                                    q: row.reference_id,
+                                    detail: row.reference_id,
+                                  }
+                                : { q: row.reference_id },
+                            )}
+                          >
+                            {row.reference_id}
+                          </a>
+                        </td>
                         <td className="date-cell">{date(row.occurred_at)}</td>
                       </>
                     )}
@@ -876,13 +833,10 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
           </span>
           <div className="inline">
             <button
-              disabled={page <= 1}
+              disabled={page <= 1 && !cursor}
               onClick={() => {
-                const prev = history.at(-1);
-                setHistory(history.slice(0, -1));
-                setPage(prev?.page || page - 1);
-                setCursor(prev?.cursor);
-                setJump(String(prev?.page || page - 1));
+                if (cursor) previousListPage(c.app.id);
+                else update({ page: Math.max(1, page - 1), cursor: undefined });
               }}
             >
               上一页
@@ -890,10 +844,10 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
             <button
               disabled={!data?.next_cursor}
               onClick={() => {
-                setHistory([...history, { page, cursor }]);
-                setPage(page + 1);
-                setJump(String(page + 1));
-                setCursor(data.next_cursor);
+                update({
+                  page: Math.min(1000, page + 1),
+                  cursor: data.next_cursor,
+                });
               }}
             >
               下一页
@@ -910,10 +864,7 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
                     Number(jump) || 1,
                   ),
                 );
-                setPage(p);
-                setJump(String(p));
-                setCursor(undefined);
-                setHistory([]);
+                update({ page: p, cursor: undefined });
               }}
             >
               <input
@@ -924,7 +875,7 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
                 value={jump}
                 onChange={(e) => setJump(e.target.value)}
               />
-              <button>跳转</button>
+              <button disabled={r.loading || !data}>跳转</button>
             </form>
           </div>
         </div>
@@ -940,25 +891,95 @@ function DataPage({ c, dataset }: { c: Context; dataset: string }) {
           onClose={() => setExporting(false)}
         />
       )}{" "}
-      {detail && <Detail c={c} id={detail} onClose={() => setDetail(null)} />}
+      {detail && (
+        <Detail
+          c={c}
+          id={detail}
+          onClose={() => update({ detail: undefined })}
+        />
+      )}
     </>
   );
 }
 function Operations({ c }: { c: Context }) {
-  const r = useResource<any[]>(c.url("/admin/operation-requests")),
-    cases = useResource<any[]>(c.url("/admin/cases")),
+  const { params, update } = useQuery(c.app.id),
+    queue = Object.fromEntries(
+      ["state", "inbox", "target_id", "cursor"]
+        .filter((k) => params[k])
+        .map((k) => [k, params[k]]),
+    ),
+    r = useResource<any>(
+      params.tab === "cases" || c.app.source_mode !== "mock"
+        ? null
+        : c.url("/admin/work-queue", {
+            ...queue,
+            page: String(pageNumber(params.page)),
+          }),
+    ),
     [action, setAction] = useState<{
       path: string;
       title: string;
       description: string;
-    } | null>(null),
-    [newCase, setNewCase] = useState(false),
-    [title, setTitle] = useState(""),
-    [trade, setTrade] = useState("");
+    } | null>(null);
   return (
     <>
-      {c.app.source_mode === "mishu" && <ManagementPanel c={c} />}
-      {c.app.source_mode === "mock" && (
+      <div className="section-tools" role="group" aria-label="异常与审批视图">
+        <a
+          className="button"
+          href={href("operations", c.app.id, { tab: "requests" })}
+        >
+          处理申请
+        </a>
+        <a
+          className="button"
+          href={href("operations", c.app.id, { tab: "cases" })}
+        >
+          异常工单
+        </a>
+      </div>
+      {params.tab !== "cases" && (
+        <div className="filter-bar">
+          <select
+            aria-label="申请待办范围"
+            value={params.inbox || ""}
+            onChange={(e) =>
+              update({
+                tab: "requests",
+                inbox: e.target.value,
+                page: undefined,
+                cursor: undefined,
+                state: undefined,
+              })
+            }
+          >
+            <option value="">全部申请</option>
+            {c.user.roles.includes("approver") && (
+              <option value="approval">待我审批</option>
+            )}
+            <option value="unknown">结果待确认</option>
+          </select>
+          {params.target_id && (
+            <span className="caption">
+              对象：{params.target_id}{" "}
+              <button
+                onClick={() =>
+                  update({
+                    target_id: undefined,
+                    cursor: undefined,
+                    page: undefined,
+                  })
+                }
+              >
+                清除对象筛选
+              </button>
+            </span>
+          )}
+        </div>
+      )}
+      {params.tab !== "cases" && c.app.source_mode === "mishu" && (
+        <ManagementPanel c={c} />
+      )}
+      {params.tab !== "cases" && c.app.source_mode === "mock" && (
         <Panel
           title="托管积分退回审批"
           action={
@@ -970,11 +991,19 @@ function Operations({ c }: { c: Context }) {
             30 分钟。
           </p>
           <Alert>{r.error}</Alert>
-          {r.data?.length ? (
-            r.data.map((o) => (
+          {r.data?.items.length ? (
+            r.data.items.map((o: any) => (
               <article className="operation" key={o.id}>
                 <div className="record-row">
-                  <code>{o.trade_id}</code>
+                  <a
+                    className="text-button mono"
+                    href={href("trades", c.app.id, {
+                      q: o.trade_id,
+                      detail: o.trade_id,
+                    })}
+                  >
+                    {o.trade_id}
+                  </a>
                   <Badge value={o.state} />
                   <strong>{money(o.command.amount)} CREDIT</strong>
                 </div>
@@ -1046,136 +1075,19 @@ function Operations({ c }: { c: Context }) {
           )}
         </Panel>
       )}
-      <Panel
-        title="异常工单"
-        action={
-          c.user.roles.includes("operator") && (
-            <button onClick={() => setNewCase(true)}>新建工单</button>
-          )
-        }
-      >
-        <Alert>{cases.error}</Alert>
-        {cases.data?.length ? (
-          cases.data.map((x) => (
-            <article className="operation" key={x.id}>
-              <div className="record-row">
-                <h3>{x.title}</h3>
-                <Badge value={x.state} />
-              </div>
-              <p className="caption">
-                关联订单 {x.trade_id || "无"} · 处理人{" "}
-                {x.owner_name || "待领取"}
-              </p>
-              {x.notes.map((n: any, i: number) => (
-                <div className="note" key={i}>
-                  {n.note}
-                  <small>{date(n.at)}</small>
-                </div>
-              ))}
-              {x.state === "open" && c.user.roles.includes("operator") && (
-                <div className="form-actions">
-                  {!x.owner_id && (
-                    <button
-                      onClick={() =>
-                        setAction({
-                          path: `/admin/cases/${x.id}`,
-                          title: "领取工单",
-                          description: "填写处理说明，领取后可跟进并关闭工单。",
-                        })
-                      }
-                    >
-                      领取任务
-                    </button>
-                  )}
-                  <button
-                    onClick={() =>
-                      setAction({
-                        path: `/admin/cases/${x.id}?action=note`,
-                        title: "补充处理记录",
-                        description: "记录将追加保存，保留处理历史。",
-                      })
-                    }
-                  >
-                    补充记录
-                  </button>
-                  {x.owner_id === c.user.id && (
-                    <button
-                      onClick={() =>
-                        setAction({
-                          path: `/admin/cases/${x.id}?action=close`,
-                          title: "关闭工单",
-                          description:
-                            "请填写处理结论。关闭工单不会修改来源账本。",
-                        })
-                      }
-                    >
-                      关闭工单
-                    </button>
-                  )}
-                </div>
-              )}
-            </article>
-          ))
-        ) : (
-          <Empty>暂无异常工单</Empty>
-        )}
-      </Panel>
+      {params.tab !== "cases" && c.app.source_mode === "mock" && (
+        <WorklistPager data={r.data} params={params} update={update} />
+      )}
+      {params.tab === "cases" && <Cases c={c} />}
       {action && (
         <ActionForm
           {...action}
           onClose={() => setAction(null)}
           onSubmit={async (reason) => {
-            const [p, q] = action.path.split("?");
-            await c.mutate(p, {
-              reason,
-              ...(p.startsWith("/admin/cases/")
-                ? {
-                    reason: undefined,
-                    action: new URLSearchParams(q).get("action") || "claim",
-                    note: reason,
-                  }
-                : {}),
-            });
+            await c.mutate(action.path, { reason });
             r.refresh();
-            cases.refresh();
+
             c.notify("处理记录已保存");
-          }}
-        />
-      )}
-      {newCase && (
-        <ActionForm
-          title="新建异常工单"
-          description={
-            <span className="form-stack">
-              <label>
-                工单标题
-                <input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  minLength={5}
-                />
-              </label>
-              <label>
-                订单编号（可选）
-                <input
-                  value={trade}
-                  onChange={(e) => setTrade(e.target.value)}
-                />
-              </label>
-            </span>
-          }
-          onClose={() => setNewCase(false)}
-          onSubmit={async (note) => {
-            await c.mutate("/admin/cases", {
-              application_id: c.app.id,
-              title,
-              trade_id: trade || undefined,
-              note,
-            });
-            cases.refresh();
-            setTitle("");
-            setTrade("");
-            c.notify("工单已创建");
           }}
         />
       )}
@@ -1184,7 +1096,6 @@ function Operations({ c }: { c: Context }) {
 }
 function Reconciliation({ c }: { c: Context }) {
   const runs = useResource<any[]>(c.url("/admin/reconciliation-runs")),
-    findings = useResource<any[]>(c.url("/admin/reconciliation-findings")),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   return (
@@ -1261,47 +1172,7 @@ function Reconciliation({ c }: { c: Context }) {
           <Empty>尚未运行对账</Empty>
         )}
       </Panel>
-      <Panel title="差异跟进">
-        <Alert>{findings.error}</Alert>
-        {findings.data?.length ? (
-          findings.data.map((f) => (
-            <div className="operation" key={f.id}>
-              <div className="record-row">
-                <code>{f.object_id}</code>
-                <Badge value={f.state} />
-              </div>
-              <p>
-                {f.rule} · 实际 {money(f.detail.actual)} / 应为{" "}
-                {money(f.detail.expected)} CREDIT
-              </p>
-              <p className="caption">
-                {f.resolution_note ||
-                  "需要排查来源数据与同步完整性。对账不会自动补发积分。"}
-              </p>
-              {f.state === "open" &&
-                !f.owner_id &&
-                c.user.roles.includes("operator") && (
-                  <button
-                    onClick={async () => {
-                      try {
-                        await c.mutate(
-                          "/admin/reconciliation-findings/" + f.id + "/claim",
-                        );
-                        findings.refresh();
-                      } catch (e) {
-                        setError((e as Error).message);
-                      }
-                    }}
-                  >
-                    领取差异
-                  </button>
-                )}
-            </div>
-          ))
-        ) : (
-          <Empty>暂无差异记录</Empty>
-        )}
-      </Panel>
+      <Findings c={c} />
     </>
   );
 }
@@ -1794,12 +1665,55 @@ function Operators({ c }: { c: Context }) {
   );
 }
 function Audit({ c }: { c: Context }) {
-  const [before, setBefore] = useState(""),
-    r = useResource<any[]>(
-      c.url("/admin/audit-events", before ? { before } : {}),
-    );
+  const { params, update } = useQuery(c.app.id),
+    filter = Object.fromEntries(
+      ["before", "actor_id", "action", "object_id", "from", "to"]
+        .filter((k) => params[k])
+        .map((k) => [k, params[k]]),
+    ),
+    before = params.before,
+    [draft, setDraft] = useState<Record<string, string>>(filter),
+    r = useResource<any[]>(c.url("/admin/audit-events", filter));
+  useEffect(
+    () => setDraft(filter),
+    [params.actor_id, params.action, params.object_id, params.from, params.to],
+  );
   return (
     <Panel title="追加式操作审计">
+      <form
+        className="filter-bar"
+        onSubmit={(e) => {
+          e.preventDefault();
+          update({ ...draft, before: undefined });
+        }}
+      >
+        {[
+          ["actor_id", "操作者编号"],
+          ["action", "操作类型"],
+          ["object_id", "审计对象编号"],
+          ["from", "审计开始日期"],
+          ["to", "审计结束日期"],
+        ].map(([key, label]) => (
+          <input
+            key={key}
+            aria-label={label}
+            placeholder={label}
+            type={key === "from" || key === "to" ? "date" : "text"}
+            value={draft[key] || ""}
+            onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
+          />
+        ))}
+        <button className="primary">查询审计</button>
+        <button
+          type="button"
+          onClick={() => {
+            setDraft({});
+            update({}, true);
+          }}
+        >
+          重置
+        </button>
+      </form>
       <Alert>{r.error}</Alert>
       <div className="table-scroll">
         <table>
@@ -1831,12 +1745,15 @@ function Audit({ c }: { c: Context }) {
         </table>
       </div>
       <div className="pagination">
-        <button disabled={!before} onClick={() => setBefore("")}>
+        <button
+          disabled={!before}
+          onClick={() => update({ before: undefined })}
+        >
           最新记录
         </button>
         <button
           disabled={!r.data?.length}
-          onClick={() => setBefore(r.data!.at(-1).seq)}
+          onClick={() => update({ before: r.data!.at(-1).seq })}
         >
           更早记录
         </button>
@@ -1847,8 +1764,6 @@ function Audit({ c }: { c: Context }) {
 function App() {
   const [user, setUser] = useState<User | null>(null),
     [ready, setReady] = useState(false),
-    [appId, setAppId] = useState(""),
-    [page, setPage] = useState(location.hash.slice(1) || "overview"),
     [notice, setNotice] = useState(""),
     [password, setPassword] = useState(false),
     [security, setSecurity] = useState(false),
@@ -1856,9 +1771,19 @@ function App() {
     [current, setCurrent] = useState(""),
     [next, setNext] = useState(""),
     [error, setError] = useState("");
+  const route = useRoute(),
+    page = route.page;
   const appearance = useAppearance(),
     apps = useResource<any[]>(user ? "/admin/applications" : null),
-    app = apps.data?.find((a) => a.id === appId) || apps.data?.[0];
+    app = apps.data?.find((a) => a.id === route.params.app) || apps.data?.[0];
+  useRememberRoute(app?.id || "");
+  useEffect(() => {
+    if (app && route.params.app !== app.id) {
+      const params = route.params.app ? {} : route.params;
+      history.replaceState(null, "", href(route.page, app.id, params));
+      window.dispatchEvent(new HashChangeEvent("hashchange"));
+    }
+  }, [app?.id, route.params.app]);
   const me = () => {
     void request<User>("/auth/me")
       .then(setUser)
@@ -1868,15 +1793,12 @@ function App() {
   useEffect(() => {
     me();
     const expired = () => {
-        setUser(null);
-        setReady(true);
-      },
-      hash = () => setPage(location.hash.slice(1) || "overview");
+      setUser(null);
+      setReady(true);
+    };
     window.addEventListener("session-expired", expired);
-    window.addEventListener("hashchange", hash);
     return () => {
       window.removeEventListener("session-expired", expired);
-      window.removeEventListener("hashchange", hash);
     };
   }, []);
   useEffect(() => {
@@ -1913,7 +1835,12 @@ function App() {
   const content = () => {
     switch (selected[0]) {
       case "overview":
-        return <Dashboard key={c.app.id} c={c} />;
+        return (
+          <>
+            <Workbench c={c} />
+            <Dashboard key={c.app.id} c={c} />
+          </>
+        );
       case "operations":
         return <Operations c={c} />;
       case "reconciliation":
@@ -1939,7 +1866,7 @@ function App() {
           {visible.map(([key, label, icon]) => (
             <a
               key={key}
-              href={"#" + key}
+              href={rememberedHref(key, app?.id || "")}
               className={selected[0] === key ? "active" : ""}
               aria-current={selected[0] === key ? "page" : undefined}
             >
@@ -1979,7 +1906,8 @@ function App() {
               onClick={async () => {
                 await c.mutate("/auth/logout");
                 setUser(null);
-                setAppId("");
+                clearNavigation();
+                navigate("overview", "");
               }}
             >
               <Icon name="logout" />
@@ -1992,7 +1920,10 @@ function App() {
             <select
               aria-label="当前应用"
               value={app?.id || ""}
-              onChange={(e) => setAppId(e.target.value)}
+              onChange={(e) => {
+                clearNavigation();
+                navigate(selected[0], e.target.value);
+              }}
             >
               {apps.data?.map((a) => (
                 <option key={a.id} value={a.id}>

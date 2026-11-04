@@ -1240,3 +1240,48 @@ footer {
 .modal-header h2 {
   margin: 0;
 }
+
+/* Operational tasks use the same MiShu surfaces and theme tokens as data cards. */
+.workbench-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+  gap: 12px;
+}
+.workbench-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 16px;
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  background: var(--color-card);
+}
+.workbench-card:hover {
+  border-color: var(--color-accent);
+}
+.workbench-card:focus-visible,
+a.text-button:focus-visible,
+a.button:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
+.workbench-card strong {
+  font-size: 30px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.workbench-card small {
+  color: var(--accent-text);
+}
+a.text-button {
+  display: inline;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .workbench-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workbench-card {
+    padding: 12px;
+  }
+}

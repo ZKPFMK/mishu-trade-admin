@@ -1,3 +1,5 @@
+import { WorklistPager } from "./workbench";
+import { href, pageNumber, useQuery } from "./navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { useResource, money, date, statusNames, errorText } from "./api";
 export const managementNames: Record<string, string> = {
@@ -72,7 +74,27 @@ export function ManagementDialog({
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [key, setKey] = useState(crypto.randomUUID());
-  const cases = useResource<any[]>(c.url("/admin/cases"));
+  const [caseSearch, setCaseSearch] = useState(""),
+    [caseQuery, setCaseQuery] = useState(""),
+    [caseCursor, setCaseCursor] = useState<string | undefined>(),
+    [caseHistory, setCaseHistory] = useState<Array<string | undefined>>([]);
+  const cases = useResource<any>(
+    c.url("/admin/case-worklist", {
+      owner: "me",
+      state: "open",
+      ...(caseQuery ? { q: caseQuery } : {}),
+      ...(type !== "adjust_credit" &&
+      /^[a-zA-Z0-9_:.-]{1,160}$/.test(target.trim())
+        ? { trade_id: target.trim() }
+        : {}),
+      ...(caseCursor ? { cursor: caseCursor } : {}),
+    }),
+  );
+  useEffect(() => {
+    setCaseCursor(undefined);
+    setCaseHistory([]);
+    setCase("");
+  }, [target, type]);
   const reset = () => {
     setPreview(null);
     setKey(crypto.randomUUID());
@@ -211,9 +233,35 @@ export function ManagementDialog({
             placeholder="说明核验结果，填写相关订单、流水、用户反馈或证据文件编号"
           />
         </label>
+        {!preview && (
+          <div className="filter-bar">
+            <input
+              aria-label="查找关联工单"
+              placeholder="工单编号或部分标题"
+              value={caseSearch}
+              onChange={(e) => setCaseSearch(e.target.value)}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setCaseQuery(caseSearch);
+                setCaseCursor(undefined);
+                setCaseHistory([]);
+              }}
+            >
+              查找工单
+            </button>
+          </div>
+        )}
+        {cases.error && (
+          <div className="alert" role="alert">
+            {cases.error}
+          </div>
+        )}
         <label>
           关联工单
           <select
+            aria-label="关联工单"
             required
             value={caseId}
             disabled={!!preview}
@@ -223,20 +271,50 @@ export function ManagementDialog({
             }}
           >
             <option value="">选择本人已领取的开放工单</option>
-            {cases.data
-              ?.filter(
-                (x) =>
+            {caseId && !cases.data?.items.some((x: any) => x.id === caseId) && (
+              <option value={caseId}>{caseId}（已选择）</option>
+            )}
+            {cases.data?.items
+              .filter(
+                (x: any) =>
                   x.state === "open" &&
                   x.owner_id === c.user.id &&
                   (type === "adjust_credit" || x.trade_id === target),
               )
-              .map((x) => (
+              .map((x: any) => (
                 <option key={x.id} value={x.id}>
                   {x.title} · {x.id}
                 </option>
               ))}
           </select>
         </label>
+        {!preview && (
+          <div className="form-actions">
+            <span className="caption">
+              符合条件的工单共 {money(cases.data?.total)} 条
+            </span>
+            <button
+              type="button"
+              disabled={!caseHistory.length}
+              onClick={() => {
+                setCaseCursor(caseHistory.at(-1));
+                setCaseHistory(caseHistory.slice(0, -1));
+              }}
+            >
+              上一组工单
+            </button>
+            <button
+              type="button"
+              disabled={!cases.data?.next_cursor}
+              onClick={() => {
+                setCaseHistory([...caseHistory, caseCursor]);
+                setCaseCursor(cases.data.next_cursor);
+              }}
+            >
+              下一组工单
+            </button>
+          </div>
+        )}
         {!preview && (
           <button
             type="button"
@@ -252,6 +330,10 @@ export function ManagementDialog({
                   evidence,
                 });
                 setCase(created.id);
+                setCaseQuery(created.id);
+                setCaseSearch(created.id);
+                setCaseCursor(undefined);
+                setCaseHistory([]);
                 cases.refresh();
               })
             }
@@ -348,10 +430,9 @@ export function ManagementDialog({
   );
 }
 export function ManagementPanel({ c }: { c: any }) {
-  const [page, setPage] = useState(1),
-    [jump, setJump] = useState("1"),
-    [state, setState] = useState(""),
-    [create, setCreate] = useState(false),
+  const { params, update } = useQuery(c.app.id),
+    state = params.state || "";
+  const [create, setCreate] = useState(false),
     [decision, setDecision] = useState<any>(null),
     [reason, setReason] = useState(""),
     [password, setPassword] = useState(""),
@@ -359,7 +440,14 @@ export function ManagementPanel({ c }: { c: any }) {
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   const r = useResource<any>(
-    c.url("/admin/management/requests", { page, ...(state ? { state } : {}) }),
+    c.url("/admin/work-queue", {
+      page: String(pageNumber(params.page)),
+      ...Object.fromEntries(
+        ["state", "inbox", "target_id", "cursor"]
+          .filter((k) => params[k])
+          .map((k) => [k, params[k]]),
+      ),
+    }),
   );
   const open = (o: any, action: string) => {
     setDecision({ o, action });
@@ -390,9 +478,12 @@ export function ManagementPanel({ c }: { c: any }) {
         aria-label="运营处理状态"
         value={state}
         onChange={(e) => {
-          setState(e.target.value);
-          setPage(1);
-          setJump("1");
+          update({
+            tab: "requests",
+            state: e.target.value,
+            page: undefined,
+            cursor: undefined,
+          });
         }}
       >
         <option value="">全部处理状态</option>
@@ -438,12 +529,36 @@ export function ManagementPanel({ c }: { c: any }) {
             </span>
             <strong>{money(o.intent.operation.amount)} CREDIT</strong>
           </div>
-          <p className="mono">{o.target_id}</p>
+          <p className="mono">
+            <a
+              className="text-button"
+              href={href(
+                o.type === "adjust_credit" ? "accounts" : "trades",
+                c.app.id,
+                o.type === "adjust_credit"
+                  ? { q: o.target_id }
+                  : { q: o.target_id, detail: o.target_id },
+              )}
+            >
+              {o.target_id}
+            </a>
+          </p>
           <p>{o.intent.reason}</p>
           <details>
             <summary>核验依据与审批记录</summary>
             <p>{o.intent.evidence}</p>
-            <p>工单 {o.case_id}</p>
+            <p>
+              工单{" "}
+              <a
+                className="text-button"
+                href={href("operations", c.app.id, {
+                  tab: "cases",
+                  case_id: o.case_id,
+                })}
+              >
+                {o.case_id}
+              </a>
+            </p>
             <p>审批意见：{o.decision_reason || "待审批"}</p>
             <code>{o.id}</code>
           </details>
@@ -490,54 +605,7 @@ export function ManagementPanel({ c }: { c: any }) {
           </div>
         </article>
       ))}
-      <div className="pagination">
-        <span>
-          第 {page} 页 · 共{" "}
-          {Math.max(1, Math.ceil(Number(r.data?.total || 0) / 25))} 页
-        </span>
-        <button
-          disabled={page <= 1}
-          onClick={() => {
-            setPage(page - 1);
-            setJump(String(page - 1));
-          }}
-        >
-          上一页
-        </button>
-        <button
-          disabled={page * 25 >= Number(r.data?.total || 0)}
-          onClick={() => {
-            setPage(page + 1);
-            setJump(String(page + 1));
-          }}
-        >
-          下一页
-        </button>
-        <input
-          aria-label="运营处理跳转页码"
-          type="number"
-          min="1"
-          max="1000"
-          value={jump}
-          onChange={(e) => setJump(e.target.value)}
-        />
-        <button
-          onClick={() =>
-            setPage(
-              Math.max(
-                1,
-                Math.min(
-                  1000,
-                  Math.ceil(Number(r.data?.total || 0) / 25) || 1,
-                  Number(jump) || 1,
-                ),
-              ),
-            )
-          }
-        >
-          跳转
-        </button>
-      </div>
+      <WorklistPager data={r.data} params={params} update={update} />
       {create && (
         <ManagementDialog
           c={c}

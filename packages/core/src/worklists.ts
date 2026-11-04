@@ -102,7 +102,8 @@ async function pageRows(
         identifier.safeParse(c.id).success &&
         typeof c.time === "string" &&
         /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/.test(c.time) &&
-        Number.isFinite(Date.parse(c.time)),
+        Number.isFinite(Date.parse(c.time)) &&
+        new Date(c.time).toISOString().slice(0, 19) === c.time.slice(0, 19),
       400,
       "invalid_cursor",
     );
@@ -373,7 +374,7 @@ export async function listAudit(
   }
   if (f.to) {
     values.push(f.to + "T00:00:00+08:00");
-    where.push(`created_at<$${values.length}::timestamptz+interval '1 day'`);
+    where.push(`created_at<$${values.length}::timestamptz+interval '24 hours'`);
   }
   return (
     await db.query(

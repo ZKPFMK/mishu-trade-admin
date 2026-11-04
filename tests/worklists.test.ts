@@ -19,6 +19,21 @@ test("case worklist reaches old records, literal title filters, scoped detail an
     const first = (await get(base)).json();
     assert.equal(first.total, "235");
     assert.equal(first.items.length, 25);
+    const forged = JSON.parse(
+      Buffer.from(first.next_cursor, "base64url").toString(),
+    );
+    forged.time = "2026-02-30T00:00:00.123456Z";
+    assert.equal(
+      (
+        await get(
+          base +
+            "&cursor=" +
+            Buffer.from(JSON.stringify(forged)).toString("base64url"),
+        )
+      ).statusCode,
+      400,
+    );
+
     const seen = new Set<string>();
     let cursor = "";
     do {
@@ -219,7 +234,7 @@ test("audit filters preserve global-event visibility, exact matching, Shanghai d
   }
 });
 
-test("account-linked journals use scoped entries, export-compatible filters and exact large integer amounts", async () => {
+test("account-linked journals use scoped entries and export-compatible filters", async () => {
   const f = await fixture();
   try {
     const entry = f.bundle.journals[0].entries[0];
@@ -258,6 +273,51 @@ test("account-linked journals use scoped entries, export-compatible filters and 
       filtersSchema.parse({ account_id: "no_account" }),
     );
     assert.equal(different.total, "0");
+  } finally {
+    await f.close();
+  }
+});
+
+test("finding worklist reaches all open findings and agrees with the dashboard", async () => {
+  const f = await fixture();
+  try {
+    await f.db.query(
+      "INSERT INTO jobs(id,application_id,kind) VALUES('run_worklist',$1,'reconcile')",
+      [f.app],
+    );
+    await f.db.query(
+      `INSERT INTO reconciliation_findings(id,application_id,rule,object_id,state,detail,first_run,last_run)
+      SELECT 'finding_'||n,$1,'account_balance','user:test_'||n,CASE WHEN n%2=0 THEN 'resolved' ELSE 'open' END,'{"actual":"9007199254740993","expected":"0"}','run_worklist','run_worklist' FROM generate_series(1,235) n`,
+      [f.app],
+    );
+    const headers = await f.session("requester");
+    const get = (q: string) =>
+      f.api.inject({
+        url: `/admin/finding-worklist?application_id=${f.app}${q}`,
+        headers,
+      });
+    const first = (await get("&state=open")).json();
+    assert.equal(first.total, "118");
+    const stats = (
+      await f.api.inject({
+        url: `/admin/workbench?application_id=${f.app}`,
+        headers,
+      })
+    ).json();
+    assert.equal(stats.open_findings, first.total);
+    assert.equal(
+      (await get("&q=user:test_1")).json().items[0].detail.actual,
+      "9007199254740993",
+    );
+    assert.equal(
+      (await get("&state=open&cursor=" + first.next_cursor)).json().items
+        .length,
+      25,
+    );
+    assert.equal(
+      (await get("&state=resolved&cursor=" + first.next_cursor)).statusCode,
+      400,
+    );
   } finally {
     await f.close();
   }
