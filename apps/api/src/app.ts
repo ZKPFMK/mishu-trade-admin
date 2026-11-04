@@ -1,3 +1,15 @@
+import {
+  caseFilters,
+  queueFilters,
+  findingFilters,
+  auditFilters,
+  listCases,
+  caseDetail,
+  listQueue,
+  listFindings,
+  workbench,
+  listAudit,
+} from "../../../packages/core/src/worklists.js";
 import { overview } from "../../../packages/core/src/analytics.js";
 import { managementRoutes } from "./management.js";
 import { activeManagement } from "../../../packages/core/src/management.js";
@@ -217,6 +229,29 @@ export async function createApp(db: pg.Pool, cfg: Config) {
       ...a,
       management_available: !!(a.management_enabled && cfg.managementEnabled),
     }));
+  });
+  api.get("/admin/workbench", async (req) => {
+    const { app, user } = await scoped(req);
+    return workbench(db, app, user);
+  });
+  api.get("/admin/case-worklist", async (req) => {
+    const { app, user } = await scoped(req),
+      { application_id, ...filters } = req.query as any;
+    return listCases(db, app, user, caseFilters.parse(filters));
+  });
+  api.get("/admin/cases/:id", async (req) => {
+    const { app } = await scoped(req);
+    return caseDetail(db, app, identifier.parse((req.params as any).id));
+  });
+  api.get("/admin/finding-worklist", async (req) => {
+    const { app, user } = await scoped(req),
+      { application_id, ...filters } = req.query as any;
+    return listFindings(db, app, user, findingFilters.parse(filters));
+  });
+  api.get("/admin/work-queue", async (req) => {
+    const { app, user } = await scoped(req),
+      { application_id, ...filters } = req.query as any;
+    return listQueue(db, app, user, queueFilters.parse(filters));
   });
   api.get("/admin/overview", async (req) => {
     const { app } = await scoped(req),
@@ -680,22 +715,9 @@ export async function createApp(db: pg.Pool, cfg: Config) {
     return { ok: true };
   });
   api.get("/admin/audit-events", async (req) => {
-    const { app, user } = await scoped(req);
-    requireRole(user, "auditor", "admin");
-    const q = z
-      .object({
-        before: z
-          .string()
-          .regex(/^[1-9]\d{0,18}$/)
-          .optional(),
-      })
-      .parse(req.query);
-    return (
-      await db.query(
-        "SELECT * FROM audit_events WHERE (application_id=$1 OR (application_id IS NULL AND actor_id=$2)) AND seq<$3 ORDER BY seq DESC LIMIT 100",
-        [app, user.id, q.before || "9223372036854775807"],
-      )
-    ).rows;
+    const { app, user } = await scoped(req),
+      { application_id, ...filters } = req.query as any;
+    return listAudit(db, app, user, auditFilters.parse(filters));
   });
   api.get("/admin/operators", async (req) => {
     const user = await actor(db, req);

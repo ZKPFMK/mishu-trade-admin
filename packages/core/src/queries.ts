@@ -12,6 +12,10 @@ export const filtersSchema = z
   .object({
     q: z.string().trim().max(160).default(""),
     status: z.string().max(60).default(""),
+    account_id: z
+      .string()
+      .regex(/^[a-zA-Z0-9_:.-]{1,160}$/)
+      .optional(),
     from: day.optional(),
     to: day.optional(),
     page: z.coerce.number().int().min(1).max(1000).default(1),
@@ -72,6 +76,17 @@ export function querySpec(
             : `t.id=${p}`,
     );
   }
+  if (filters.account_id) {
+    insist(
+      dataset === "journal-transactions" || dataset === "settlements",
+      400,
+      "invalid_input",
+    );
+    const p = add(filters.account_id);
+    where.push(
+      `EXISTS(SELECT 1 FROM journal_entries e WHERE e.application_id=t.application_id AND e.transaction_id=t.id AND e.account_id=${p})`,
+    );
+  }
   if (filters.status) {
     const p = add(filters.status);
     where.push(
@@ -97,6 +112,7 @@ export function querySpec(
     dataset,
     q: filters.q,
     status: filters.status,
+    account_id: filters.account_id,
     from: filters.from,
     to: filters.to,
   });

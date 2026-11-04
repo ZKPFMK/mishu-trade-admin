@@ -494,6 +494,14 @@
               "minimum": 1,
               "maximum": 100
             }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            },
+            "description": "Match transactions containing an entry for this exact account"
           }
         ],
         "responses": {
@@ -583,6 +591,13 @@
               "type": "integer",
               "minimum": 1,
               "maximum": 100
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -803,7 +818,8 @@
           "409": {
             "description": "State/version/idempotency conflict"
           }
-        }
+        },
+        "description": "Legacy array, most recent 200. Use /admin/case-worklist for full history and filters."
       },
       "post": {
         "summary": "Create cases",
@@ -1136,6 +1152,55 @@
             "required": true,
             "schema": {
               "type": "string"
+            }
+          },
+          {
+            "name": "before",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[1-9]\\d{0,18}$"
+            }
+          },
+          {
+            "name": "actor_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+            }
+          },
+          {
+            "name": "action",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "object_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
             }
           }
         ],
@@ -1734,6 +1799,49 @@
                 "$ref": "#/components/schemas/CaseUpdate"
               }
             }
+          }
+        }
+      },
+      "get": {
+        "summary": "Read a scoped case and its append-only notes",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
           }
         }
       }
@@ -2526,6 +2634,345 @@
           }
         }
       }
+    },
+    "/admin/workbench": {
+      "get": {
+        "summary": "Current-application operational counts; approver-only approvals exclude self and expired real requests; null means role unavailable",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/case-worklist": {
+      "get": {
+        "summary": "Scoped, stable keyset worklist; decimal total, page, limit, next_cursor and items",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 1600
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "default": "",
+              "type": "string",
+              "maxLength": 160
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "closed"
+              ]
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "me",
+                "unassigned"
+              ]
+            }
+          },
+          {
+            "name": "trade_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/work-queue": {
+      "get": {
+        "summary": "Scoped, stable keyset worklist; decimal total, page, limit, next_cursor and items",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 1600
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending_approval",
+                "approved",
+                "executing",
+                "execution_unknown",
+                "succeeded",
+                "execution_failed",
+                "rejected",
+                "canceled",
+                "expired"
+              ]
+            }
+          },
+          {
+            "name": "inbox",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "approval",
+                "unknown"
+              ]
+            }
+          },
+          {
+            "name": "target_id",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/finding-worklist": {
+      "get": {
+        "summary": "Scoped, stable keyset worklist; decimal total, page, limit, next_cursor and items",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "maxLength": 1600
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "default": "",
+              "type": "string",
+              "maxLength": 160
+            }
+          },
+          {
+            "name": "state",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "resolved"
+              ]
+            }
+          },
+          {
+            "name": "owner",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "me",
+                "unassigned"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2546,6 +2993,184 @@
       }
     },
     "schemas": {
+      "CaseFilters": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "default": 1,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "limit": {
+            "default": 25,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "cursor": {
+            "type": "string",
+            "maxLength": 1600
+          },
+          "q": {
+            "default": "",
+            "type": "string",
+            "maxLength": 160
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ]
+          },
+          "owner": {
+            "type": "string",
+            "enum": [
+              "me",
+              "unassigned"
+            ]
+          },
+          "trade_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          }
+        },
+        "required": [
+          "page",
+          "limit",
+          "q"
+        ],
+        "additionalProperties": false
+      },
+      "QueueFilters": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "default": 1,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "limit": {
+            "default": 25,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "cursor": {
+            "type": "string",
+            "maxLength": 1600
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "pending_approval",
+              "approved",
+              "executing",
+              "execution_unknown",
+              "succeeded",
+              "execution_failed",
+              "rejected",
+              "canceled",
+              "expired"
+            ]
+          },
+          "inbox": {
+            "type": "string",
+            "enum": [
+              "approval",
+              "unknown"
+            ]
+          },
+          "target_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          }
+        },
+        "required": [
+          "page",
+          "limit"
+        ],
+        "additionalProperties": false
+      },
+      "FindingFilters": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "default": 1,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "limit": {
+            "default": 25,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "cursor": {
+            "type": "string",
+            "maxLength": 1600
+          },
+          "q": {
+            "default": "",
+            "type": "string",
+            "maxLength": 160
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "open",
+              "resolved"
+            ]
+          },
+          "owner": {
+            "type": "string",
+            "enum": [
+              "me",
+              "unassigned"
+            ]
+          }
+        },
+        "required": [
+          "page",
+          "limit",
+          "q"
+        ],
+        "additionalProperties": false
+      },
+      "AuditFilters": {
+        "type": "object",
+        "properties": {
+          "before": {
+            "type": "string",
+            "pattern": "^[1-9]\\d{0,18}$"
+          },
+          "actor_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "object_id": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
+          },
+          "from": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          }
+        },
+        "additionalProperties": false
+      },
       "ManagementInput": {
         "type": "object",
         "properties": {
@@ -5327,6 +5952,10 @@
                 "default": "",
                 "type": "string",
                 "maxLength": 60
+              },
+              "account_id": {
+                "type": "string",
+                "pattern": "^[a-zA-Z0-9_:.-]{1,160}$"
               },
               "from": {
                 "type": "string",

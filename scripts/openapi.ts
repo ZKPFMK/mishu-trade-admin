@@ -1,3 +1,9 @@
+import {
+  caseFilters,
+  queueFilters,
+  findingFilters,
+  auditFilters,
+} from "../packages/core/src/worklists.js";
 import fs from "node:fs";
 import path from "node:path";
 import { z } from "zod";
@@ -24,6 +30,10 @@ import {
 } from "../packages/contracts/src/management.js";
 const reason = z.string().trim().min(5).max(1000);
 const raw = {
+  CaseFilters: caseFilters,
+  QueueFilters: queueFilters,
+  FindingFilters: findingFilters,
+  AuditFilters: auditFilters,
   ManagementInput: managementInput,
   ManagementIntent: managementIntent,
   ManagementCommand: managementCommand,
@@ -453,6 +463,45 @@ for (const field of ["from", "to"])
   });
 paths["/admin/overview"].get.description =
   "Orders, state distribution and license types are filtered by order creation time; financial trends, payout components and top assets use journal time. Account balances remain current snapshots. Continuous trend buckets include zero-activity dates and cover the entire range in at most 90 equal-day buckets. Exact integer aggregates are decimal strings. Bounded ranges include the immediately preceding equal-length comparison period. See docs/analytics.md.";
+add(
+  "get",
+  "/admin/workbench",
+  "Current-application operational counts; approver-only approvals exclude self and expired real requests; null means role unavailable",
+);
+add("get", "/admin/cases/{id}", "Read a scoped case and its append-only notes");
+for (const [route, schema] of [
+  ["case-worklist", caseFilters],
+  ["work-queue", queueFilters],
+  ["finding-worklist", findingFilters],
+  ["audit-events", auditFilters],
+] as const) {
+  if (route !== "audit-events")
+    add(
+      "get",
+      "/admin/" + route,
+      "Scoped, stable keyset worklist; decimal total, page, limit, next_cursor and items",
+    );
+  const { properties = {} } = z.toJSONSchema(schema) as any;
+  for (const [name, definition] of Object.entries(properties))
+    paths["/admin/" + route].get.parameters.push({
+      name,
+      in: "query",
+      schema: definition,
+    });
+}
+paths["/admin/journal-transactions"].get.parameters.push({
+  name: "account_id",
+  in: "query",
+  schema: { type: "string" },
+  description: "Match transactions containing an entry for this exact account",
+});
+paths["/admin/settlements"].get.parameters.push({
+  name: "account_id",
+  in: "query",
+  schema: { type: "string" },
+});
+paths["/admin/cases"].get.description =
+  "Legacy array, most recent 200. Use /admin/case-worklist for full history and filters.";
 const spec = {
   openapi: "3.1.0",
   info: {
