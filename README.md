@@ -33,6 +33,8 @@ npm run local:start
 | `approver@trade-admin.local` | 查看、独立审批；不能审批自己的申请             |
 | `auditor@trade-admin.local`  | 查看、导出、审计；不能申请或审批               |
 
+需要逐一体验五个岗位时，执行 `npm run local:role-previews`，通过现有管理 API 新建五个单岗位账号：`preview-admin`、`preview-operator`、`preview-approver`、`preview-viewer`、`preview-auditor`，邮箱后缀均为 `@trade-admin.local`。随机密码保存在 `.local/role-preview-accounts.json`，原有三账号保留。该命令只允许本机的模拟测试应用，重复运行会核验已有账号，不重置密码或提升权限。具体区别见 [五岗位体验](docs/role-previews.md)。
+
 本地演示时可以用两个浏览器会话切换申请人和审批人。上线需要为不同实际人员分配账号；仅使用两个账号不能替代组织上的职责分离。
 
 ```sh

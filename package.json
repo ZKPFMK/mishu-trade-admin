@@ -32,7 +32,9 @@
     "management:enable": "tsx scripts/enable-management.ts",
     "management:check": "tsx scripts/check-management.ts",
     "test:management": "tsx scripts/test-management.ts",
-    "test:workbench:ui": "tsx scripts/test-workbench-ui.ts"
+    "test:workbench:ui": "tsx scripts/test-workbench-ui.ts",
+    "local:role-previews": "tsx scripts/role-previews.ts",
+    "test:roles:ui": "tsx scripts/test-role-previews-ui.ts"
   },
   "dependencies": {
     "@fastify/cookie": "11.1.3",
