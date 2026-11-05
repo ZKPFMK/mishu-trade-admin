@@ -47,8 +47,16 @@ try {
     const roles = identity.getByLabel("我的岗位");
     assert.equal(await roles.locator(".badge").count(), 1);
     await roles.getByText(label, { exact: true }).waitFor();
+    const landingHeading =
+      role === "admin"
+        ? "接入信息"
+        : role === "viewer"
+          ? "订单分布"
+          : role === "auditor"
+            ? "追加式操作审计"
+            : "运营待办";
     await page
-      .getByRole("heading", { name: "运营待办", exact: true })
+      .getByRole("heading", { name: landingHeading, exact: true })
       .waitFor();
     assert.equal(
       await page
@@ -76,18 +84,22 @@ try {
       path: path.join(out, `role-${role}.png`),
       animations: "disabled",
     });
-    await page
-      .locator("nav")
-      .getByRole("link", { name: "异常与审批", exact: true })
-      .click();
-    await page.getByRole("link", { name: "异常工单", exact: true }).click();
-    await page
-      .getByRole("heading", { name: "异常工单", exact: true })
-      .waitFor();
-    assert.equal(
-      await page.getByRole("button", { name: "新建工单", exact: true }).count(),
-      role === "operator" ? 1 : 0,
-    );
+    if (["operator", "approver", "auditor"].includes(role)) {
+      await page
+        .locator("nav")
+        .getByRole("link", { name: "异常与审批", exact: true })
+        .click();
+      await page.getByRole("link", { name: "异常工单", exact: true }).click();
+      await page
+        .getByRole("heading", { name: "异常工单", exact: true })
+        .waitFor();
+      assert.equal(
+        await page
+          .getByRole("button", { name: "新建工单", exact: true })
+          .count(),
+        role === "operator" ? 1 : 0,
+      );
+    }
     await page.getByRole("button", { name: "退出登录", exact: true }).click();
     await page
       .getByRole("button", { name: "登录工作台", exact: true })

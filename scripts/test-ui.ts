@@ -36,6 +36,13 @@ async function login(p: typeof page, name: string) {
   await p.getByLabel("账号邮箱").fill(name + "@test.local");
   await p.getByLabel("密码", { exact: true }).fill("Test-only-password-042!");
   await p.getByRole("button", { name: "登录工作台" }).click();
+  if (
+    !(await p.getByRole("heading", { name: "工作概览", exact: true }).count())
+  )
+    await p
+      .locator("nav")
+      .getByRole("link", { name: "工作概览", exact: true })
+      .click();
   await p.getByRole("heading", { name: "工作概览", exact: true }).waitFor();
 }
 async function nav(label: string) {

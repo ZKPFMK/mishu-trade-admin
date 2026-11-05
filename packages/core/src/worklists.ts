@@ -6,6 +6,7 @@ import { type Actor, requireRole } from "./auth.js";
 import { digest, insist } from "./security.js";
 import { managementView } from "./management.js";
 import { filtersSchema } from "./queries.js";
+import { hasCapability } from "./permissions.js";
 
 const paging = {
   page: z.coerce.number().int().min(1).max(1000).default(1),
@@ -326,27 +327,33 @@ export async function workbench(db: pg.Pool, app: string, user: Actor) {
     const count = async (query: string, values: unknown[] = [app]) =>
       (await sql.query(query, values)).rows[0].n as string;
     return {
-      pending_approvals: user.roles.includes("approver")
+      pending_approvals: hasCapability(user.roles, "approval:decide")
         ? await count(
             `SELECT count(*)::text n FROM ${table} r WHERE r.application_id=$1 AND ${approvalWhere(real)}`,
             [app, user.id],
           )
         : null,
-      my_cases: user.roles.includes("operator")
+      my_cases: hasCapability(user.roles, "operations:write")
         ? await count(
             "SELECT count(*)::text n FROM cases WHERE application_id=$1 AND state='open' AND owner_id=$2",
             [app, user.id],
           )
         : null,
-      unassigned_cases: await count(
-        "SELECT count(*)::text n FROM cases WHERE application_id=$1 AND state='open' AND owner_id IS NULL",
-      ),
-      unknown_results: await count(
-        `SELECT count(*)::text n FROM ${table} WHERE application_id=$1 AND state='execution_unknown'`,
-      ),
-      open_findings: await count(
-        "SELECT count(*)::text n FROM reconciliation_findings WHERE application_id=$1 AND state='open'",
-      ),
+      unassigned_cases: hasCapability(user.roles, "operations:write")
+        ? await count(
+            "SELECT count(*)::text n FROM cases WHERE application_id=$1 AND state='open' AND owner_id IS NULL",
+          )
+        : null,
+      unknown_results: hasCapability(user.roles, "operations:read")
+        ? await count(
+            `SELECT count(*)::text n FROM ${table} WHERE application_id=$1 AND state='execution_unknown'`,
+          )
+        : null,
+      open_findings: hasCapability(user.roles, "reconciliation:read")
+        ? await count(
+            "SELECT count(*)::text n FROM reconciliation_findings WHERE application_id=$1 AND state='open'",
+          )
+        : null,
       updated_at: (await sql.query("SELECT now() at")).rows[0].at.toISOString(),
     };
   });

@@ -245,6 +245,89 @@
         "description": "Orders, state distribution and license types are filtered by order creation time; financial trends, payout components and top assets use journal time. Account balances remain current snapshots. Continuous trend buckets include zero-activity dates and cover the entire range in at most 90 equal-day buckets. Exact integer aggregates are decimal strings. Bounded ranges include the immediately preceding equal-length comparison period. See docs/analytics.md."
       }
     },
+    "/admin/assets": {
+      "get": {
+        "summary": "Read assets",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
     "/admin/trades": {
       "get": {
         "summary": "Read trades",
@@ -1445,9 +1528,82 @@
         }
       }
     },
+    "/admin/contexts": {
+      "get": {
+        "summary": "Read minimal application contexts for navigation",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
     "/admin/trades/{id}": {
       "get": {
         "summary": "Order detail with complete journal, escrow and operations",
+        "security": [
+          {
+            "sessionCookie": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "application_id",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Scoped result."
+          },
+          "400": {
+            "description": "Invalid input"
+          },
+          "401": {
+            "description": "Authentication required"
+          },
+          "403": {
+            "description": "Role, scope, credential purpose or CSRF rejected"
+          },
+          "409": {
+            "description": "State/version/idempotency conflict"
+          }
+        }
+      }
+    },
+    "/admin/assets/{id}": {
+      "get": {
+        "summary": "Asset summary with versions and linked orders",
         "security": [
           {
             "sessionCookie": []
@@ -6247,6 +6403,48 @@
           "application_id",
           "label",
           "permissions"
+        ],
+        "additionalProperties": false
+      },
+      "AssetFilters": {
+        "type": "object",
+        "properties": {
+          "q": {
+            "default": "",
+            "type": "string",
+            "maxLength": 160
+          },
+          "status": {
+            "default": "",
+            "type": "string",
+            "maxLength": 60
+          },
+          "from": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "page": {
+            "default": 1,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000
+          },
+          "limit": {
+            "default": 25,
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          }
+        },
+        "required": [
+          "q",
+          "status",
+          "page",
+          "limit"
         ],
         "additionalProperties": false
       }

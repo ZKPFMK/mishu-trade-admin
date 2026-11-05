@@ -48,6 +48,7 @@ import {
 import "./style.css";
 const pages: [string, string, IconName][] = [
   ["overview", "工作概览", "overview"],
+  ["assets", "资产目录", "submissions"],
   ["trades", "全部订单", "submissions"],
   ["accounts", "积分账户", "policies"],
   ["journal-transactions", "全部流水", "submissions"],
@@ -60,6 +61,39 @@ const pages: [string, string, IconName][] = [
   ["operators", "操作员", "applications"],
   ["audit", "操作审计", "audit"],
 ];
+const pageCapabilities: Record<string, string> = {
+  overview: "business:read",
+  assets: "business:read",
+  trades: "business:read",
+  accounts: "business:read",
+  "journal-transactions": "business:read",
+  settlements: "business:read",
+  "generation-jobs": "business:read",
+  operations: "operations:read",
+  reconciliation: "reconciliation:read",
+  exports: "export:read",
+  applications: "system:read",
+  operators: "system:manage",
+  audit: "audit:read",
+};
+function pageVisible(user: User, page: string) {
+  const capability = pageCapabilities[page];
+  return !!capability && !!user.workspace?.capabilities.includes(capability);
+}
+function defaultPage(user: User) {
+  switch (user.workspace?.key) {
+    case "system":
+      return "applications";
+    case "operations":
+      return "operations";
+    case "approvals":
+      return "operations";
+    case "audit":
+      return "audit";
+    default:
+      return "overview";
+  }
+}
 function Login({ onLogin }: { onLogin: () => void }) {
   const appearance = useAppearance(),
     [email, setEmail] = useState(""),
@@ -162,6 +196,278 @@ const datasetNames: Record<string, string> = {
   settlements: "分账",
   "generation-jobs": "生成扣费",
 };
+
+function AssetDetail({
+  c,
+  id,
+  onClose,
+}: {
+  c: Context;
+  id: string;
+  onClose: () => void;
+}) {
+  const r = useResource<any>(
+      c.url("/admin/assets/" + encodeURIComponent(id)),
+      10000,
+    ),
+    d = r.data;
+  return (
+    <Modal title="资产详情" onClose={onClose}>
+      <Alert>{r.error}</Alert>
+      {d ? (
+        <>
+          <div className="detail-hero">
+            <div>
+              <span className="eyebrow">数字资产 · 来源投影</span>
+              <h3>{d.asset.title || d.asset.asset_id}</h3>
+              <code>{d.asset.asset_id}</code>
+            </div>
+            <span className="badge">来源投影</span>
+          </div>
+          <div className="facts">
+            <span>
+              最新版本<strong>{d.asset.latest_version || "—"}</strong>
+            </span>
+            <span>
+              订单数<strong>{money(d.asset.order_count)}</strong>
+            </span>
+            <span>
+              已交付<strong>{money(d.asset.delivered_count)}</strong>
+            </span>
+            <span>
+              已完成<strong>{money(d.asset.completed_count)}</strong>
+            </span>
+            <span>
+              授权类型
+              <strong>{d.asset.license_types?.join("、") || "—"}</strong>
+            </span>
+          </div>
+          <h3>资产版本</h3>
+          {d.versions.length ? (
+            <div className="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th>版本</th>
+                    <th>关联订单</th>
+                    <th>授权类型</th>
+                    <th>最近观测</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {d.versions.map((v: any) => (
+                    <tr key={v.version}>
+                      <td className="mono">v{v.version}</td>
+                      <td>{money(v.order_count)}</td>
+                      <td>{v.license_types?.join("、") || "—"}</td>
+                      <td>{date(v.last_seen_at)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <Empty>暂无版本投影</Empty>
+          )}
+          <h3>授权与交付观察</h3>
+          <p className="muted">
+            当前页面按订单投影汇总授权类型、版本和交付核验。购买事实、所有权、正式授权签发、下载/调用记录和账本仍以来源服务为准；这里不会把订单投影伪装成第二本权威账本。
+          </p>
+          {d.orders.length ? (
+            <div className="record-list">
+              {d.orders.slice(0, 8).map((order: any) => (
+                <div className="record-row" key={order.id}>
+                  <a
+                    className="text-button mono"
+                    href={href("trades", c.app.id, {
+                      q: order.id,
+                      detail: order.id,
+                    })}
+                  >
+                    {order.id}
+                  </a>
+                  <Badge value={order.status} />
+                  <span className="caption">
+                    v{order.version} ·{" "}
+                    {order.delivery_verified ? "已交付" : "待交付"} ·{" "}
+                    {date(order.updated_at)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Empty>暂无关联订单</Empty>
+          )}
+          <p className="caption">
+            证据来源：{d.evidence.source} · {d.evidence.note}
+          </p>
+        </>
+      ) : (
+        <Empty>{r.loading ? "正在加载资产…" : "资产不可访问"}</Empty>
+      )}
+    </Modal>
+  );
+}
+
+function Assets({ c }: { c: Context }) {
+  const { params, update } = useQuery(c.app.id),
+    [q, setQ] = useState(params.q || ""),
+    [status, setStatus] = useState(params.status || ""),
+    [from, setFrom] = useState(params.from || ""),
+    [to, setTo] = useState(params.to || ""),
+    page = pageNumber(params.page),
+    detail = params.detail,
+    r = useResource<any>(
+      c.url("/admin/assets", {
+        q: params.q || "",
+        status: params.status || "",
+        from: params.from || "",
+        to: params.to || "",
+        page: String(page),
+        limit: "25",
+      }),
+      10000,
+    );
+  useEffect(() => {
+    setQ(params.q || "");
+    setStatus(params.status || "");
+    setFrom(params.from || "");
+    setTo(params.to || "");
+  }, [params.q, params.status, params.from, params.to]);
+  return (
+    <>
+      <form
+        className="filter-bar"
+        onSubmit={(e) => {
+          e.preventDefault();
+          update({ q, status, from, to, page: undefined, detail: undefined });
+        }}
+      >
+        <input
+          aria-label="资产搜索"
+          placeholder="资产编号或标题"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <select
+          aria-label="资产订单状态"
+          value={status}
+          onChange={(e) => setStatus(e.target.value)}
+        >
+          <option value="">全部订单状态</option>
+          {[
+            "FUNDED",
+            "DELIVERED",
+            "DISPUTED",
+            "COMPLETED",
+            "REFUNDED",
+            "RESOLVED_BUYER",
+            "RESOLVED_SELLER",
+          ].map((s) => (
+            <option key={s} value={s}>
+              {statusNames[s]}
+            </option>
+          ))}
+        </select>
+        <input
+          aria-label="资产开始日期"
+          type="date"
+          value={from}
+          onChange={(e) => setFrom(e.target.value)}
+        />
+        <input
+          aria-label="资产结束日期"
+          type="date"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+        />
+        <button className="primary">查询资产</button>
+      </form>
+      <Alert>{r.error}</Alert>
+      <Panel
+        title="资产目录"
+        action={
+          <span className="caption">按资产身份汇总订单投影 · 每 10 秒更新</span>
+        }
+      >
+        {r.data?.items?.length ? (
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>资产</th>
+                  <th>最新版本</th>
+                  <th>授权类型</th>
+                  <th>订单 / 已交付</th>
+                  <th>最近观测</th>
+                </tr>
+              </thead>
+              <tbody>
+                {r.data.items.map((asset: any) => (
+                  <tr key={asset.asset_id}>
+                    <td>
+                      <button
+                        className="text-button mono"
+                        onClick={() => update({ detail: asset.asset_id })}
+                      >
+                        {asset.asset_id}
+                      </button>
+                      <small className="block">
+                        {asset.title || "未命名资产"}
+                      </small>
+                    </td>
+                    <td className="mono">v{asset.latest_version || "—"}</td>
+                    <td>{asset.license_types?.join("、") || "—"}</td>
+                    <td>
+                      {money(asset.order_count)} /{" "}
+                      {money(asset.delivered_count)}
+                    </td>
+                    <td className="date-cell">{date(asset.last_seen_at)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <Empty>
+            {r.loading ? "正在加载资产目录…" : "没有符合筛选条件的资产"}
+          </Empty>
+        )}
+        <div className="pagination">
+          <span>
+            第 {page} 页 · 共{" "}
+            {Math.max(
+              1,
+              Math.ceil(Number(r.data?.total || 0) / 25),
+            ).toLocaleString()}{" "}
+            页
+          </span>
+          <div className="inline">
+            <button
+              disabled={page <= 1}
+              onClick={() => update({ page: page - 1 })}
+            >
+              上一页
+            </button>
+            <button
+              disabled={!r.data?.items?.length || r.data.items.length < 25}
+              onClick={() => update({ page: page + 1 })}
+            >
+              下一页
+            </button>
+          </div>
+        </div>
+      </Panel>
+      {detail && (
+        <AssetDetail
+          c={c}
+          id={detail}
+          onClose={() => update({ detail: undefined })}
+        />
+      )}
+    </>
+  );
+}
 function ExportDialog({
   c,
   dataset,
@@ -384,6 +690,40 @@ function Detail({
               来源版本<strong>{t.version}</strong>
             </span>
           </div>
+          <h3>交易事实分段</h3>
+          <div className="facts">
+            <span>
+              付款 / 托管
+              <strong>{t.price ? "已记录" : "待确认"}</strong>
+            </span>
+            <span>
+              授权快照
+              <strong>
+                {t.license_type} · v{t.version}
+              </strong>
+            </span>
+            <span>
+              交付
+              <strong>{t.delivery_verified ? "已核验" : "未核验"}</strong>
+            </span>
+            <span>
+              项目使用
+              <strong>当前投影未登记</strong>
+            </span>
+            <span>
+              退款 / 分账
+              <strong>
+                {d.journals.some((j: any) => j.kind === "refund")
+                  ? "已出现退款分录"
+                  : d.journals.some((j: any) => j.kind === "settle")
+                    ? "已出现结算分录"
+                    : "暂无分录"}
+              </strong>
+            </span>
+          </div>
+          <p className="caption">
+            这里展示来源投影中已经存在的交易事实；项目授权、下载/调用和成片发布登记将在对应来源事件接入后显示。
+          </p>
           <div className="form-actions">
             <a
               className="button"
@@ -928,6 +1268,7 @@ function Operations({ c }: { c: Context }) {
     } | null>(null);
   return (
     <>
+      <Workbench c={c} />
       <div className="section-tools" role="group" aria-label="异常与审批视图">
         <a
           className="button"
@@ -1773,19 +2114,25 @@ function App() {
   const route = useRoute(),
     page = route.page;
   const appearance = useAppearance(),
-    apps = useResource<any[]>(user ? "/admin/applications" : null),
+    apps = useResource<any[]>(user ? "/admin/contexts" : null),
     app = apps.data?.find((a) => a.id === route.params.app) || apps.data?.[0];
   useRememberRoute(app?.id || "");
   useEffect(() => {
     if (app && route.params.app !== app.id) {
-      const params = route.params.app ? {} : route.params;
-      history.replaceState(null, "", href(route.page, app.id, params));
+      const rawPage = location.hash.slice(1).split("?")[0],
+        landing = !rawPage && user ? defaultPage(user) : route.page,
+        params = route.params.app ? {} : route.params;
+      history.replaceState(null, "", href(landing, app.id, params));
       window.dispatchEvent(new HashChangeEvent("hashchange"));
     }
-  }, [app?.id, route.params.app]);
+  }, [app?.id, route.params.app, user?.id, user?.workspace?.key]);
   const me = () => {
     void request<User>("/auth/me")
-      .then(setUser)
+      .then((next) => {
+        setUser(next);
+        if (!location.hash.slice(1).split("?")[0])
+          navigate(defaultPage(next), "");
+      })
       .catch(() => setUser(null))
       .finally(() => setReady(true));
   };
@@ -1806,15 +2153,16 @@ function App() {
       return () => clearTimeout(t);
     }
   }, [notice]);
+  useEffect(() => {
+    if (!user || !app) return;
+    const rawPage = location.hash.slice(1).split("?")[0];
+    if (!rawPage || !pageVisible(user, route.page)) {
+      navigate(defaultPage(user), app.id);
+    }
+  }, [user?.id, app?.id, route.page, user?.workspace?.key]);
   if (!ready) return <Empty>正在连接工作台…</Empty>;
   if (!user) return <Login onLogin={me} />;
-  const visible = pages.filter(([key]) =>
-    key === "operators"
-      ? user.roles.includes("admin")
-      : key === "audit"
-        ? user.roles.some((r) => ["admin", "auditor"].includes(r))
-        : true,
-  );
+  const visible = pages.filter(([key]) => pageVisible(user, key));
   const selected = visible.find((p) => p[0] === page) || visible[0];
   const c: Context = {
     user,
@@ -1840,6 +2188,8 @@ function App() {
             <Dashboard key={c.app.id} c={c} />
           </>
         );
+      case "assets":
+        return <Assets c={c} />;
       case "operations":
         return <Operations c={c} />;
       case "reconciliation":

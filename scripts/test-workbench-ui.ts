@@ -63,6 +63,17 @@ try {
       .getByLabel("密码", { exact: true })
       .fill("Test-only-password-042!");
     await target.getByRole("button", { name: "登录工作台" }).click();
+    await target.locator("h1").waitFor();
+    if (
+      !(await target
+        .getByRole("heading", { name: "运营待办", exact: true })
+        .count())
+    ) {
+      await target
+        .locator("nav")
+        .getByRole("link", { name: "异常与审批", exact: true })
+        .click();
+    }
     await target
       .getByRole("heading", { name: "运营待办", exact: true })
       .waitFor();

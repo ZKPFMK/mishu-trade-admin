@@ -8,6 +8,11 @@ export type User = {
   roles: string[];
   scopes: string[];
   csrf: string;
+  workspace?: {
+    key: string;
+    title: string;
+    capabilities: string[];
+  };
 };
 export type Context = {
   user: User;
@@ -47,8 +52,8 @@ export function AccessSummary({
         ))}
       </div>
       <p className="caption">
-        当前授权应用：{app?.name || "尚未分配"} · 共 {applicationCount}{" "}
-        个授权应用
+        默认工作区：{user.workspace?.title || "业务概览"} · 当前授权应用：
+        {app?.name || "尚未分配"} · 共 {applicationCount} 个授权应用
       </p>
     </section>
   );

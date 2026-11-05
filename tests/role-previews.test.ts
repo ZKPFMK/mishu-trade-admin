@@ -71,6 +71,44 @@ test("five preview identities are single-role, scoped, repeatable and preserve o
         ).statusCode,
         403,
       );
+      const me = (await f.api.inject({ url: "/auth/me", headers })).json();
+      assert.equal(
+        me.workspace.key,
+        {
+          admin: "system",
+          operator: "operations",
+          approver: "approvals",
+          viewer: "overview",
+          auditor: "audit",
+        }[role],
+      );
+      assert.equal(
+        (await f.api.inject({ url: "/admin/contexts", headers })).statusCode,
+        200,
+      );
+      assert.equal(
+        (await f.api.inject({ url: "/admin/applications", headers }))
+          .statusCode,
+        role === "admin" ? 200 : 403,
+      );
+      assert.equal(
+        (await get("overview")).statusCode,
+        ["operator", "approver", "viewer", "auditor"].includes(role)
+          ? 200
+          : 403,
+      );
+      assert.equal(
+        (await get("operation-requests")).statusCode,
+        ["operator", "approver", "auditor"].includes(role) ? 200 : 403,
+      );
+      assert.equal(
+        (await get("reconciliation-findings")).statusCode,
+        ["admin", "operator", "auditor"].includes(role) ? 200 : 403,
+      );
+      assert.equal(
+        (await get("exports")).statusCode,
+        ["operator", "auditor"].includes(role) ? 200 : 403,
+      );
       const create = await f.api.inject({
         method: "POST",
         url: "/admin/cases",

@@ -59,6 +59,7 @@ test("all admin read pages and scoped operator directory respond using real Post
     const headers = await f.session("requester");
     for (const page of [
       "overview",
+      "assets",
       "trades",
       "accounts",
       "journal-transactions",
@@ -89,6 +90,18 @@ test("all admin read pages and scoped operator directory respond using real Post
       headers,
     });
     assert.equal(overview.statusCode, 200);
+    const assets = await f.api.inject({
+      url: "/admin/assets?application_id=" + f.app,
+      headers,
+    });
+    assert.equal(assets.statusCode, 200);
+    assert.ok(assets.json().items.some((x: any) => x.asset_id === "asset_5"));
+    const asset = await f.api.inject({
+      url: "/admin/assets/asset_5?application_id=" + f.app,
+      headers,
+    });
+    assert.equal(asset.statusCode, 200);
+    assert.equal(asset.json().asset.asset_id, "asset_5");
     const people = await f.api.inject({ url: "/admin/operators", headers });
     assert.equal(people.statusCode, 200);
     assert.ok(!people.json().some((p: any) => p.id === "outsider"));

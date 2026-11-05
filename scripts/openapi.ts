@@ -28,6 +28,7 @@ import {
   managementReceipt,
   fingerprint,
 } from "../packages/contracts/src/management.js";
+import { assetFilters } from "../packages/core/src/assets.js";
 const reason = z.string().trim().min(5).max(1000);
 const raw = {
   CaseFilters: caseFilters,
@@ -141,6 +142,7 @@ const raw = {
         .min(1),
     })
     .strict(),
+  AssetFilters: assetFilters,
 };
 const schemas = Object.fromEntries(
   Object.entries(raw).map(([name, schema]) => {
@@ -166,7 +168,9 @@ function add(
     !service &&
     url.startsWith("/admin/") &&
     method === "get" &&
-    !["/admin/applications", "/admin/operators"].includes(url) &&
+    !["/admin/applications", "/admin/contexts", "/admin/operators"].includes(
+      url,
+    ) &&
     !url.includes("/files/")
   )
     parameters.push({
@@ -249,6 +253,7 @@ add(
 );
 for (const name of [
   "overview",
+  "assets",
   "trades",
   "accounts",
   "journal-transactions",
@@ -270,8 +275,18 @@ for (const name of [
   add("get", "/admin/" + name, "Read " + name);
 add(
   "get",
+  "/admin/contexts",
+  "Read minimal application contexts for navigation",
+);
+add(
+  "get",
   "/admin/trades/{id}",
   "Order detail with complete journal, escrow and operations",
+);
+add(
+  "get",
+  "/admin/assets/{id}",
+  "Asset summary with versions and linked orders",
 );
 for (const name of [
   "operation-requests",
@@ -453,6 +468,21 @@ for (const dataset of [
       schema: { type: "integer", minimum: 1, maximum: max },
     });
 }
+for (const field of ["q", "status", "from", "to"])
+  paths["/admin/assets"].get.parameters.push({
+    name: field,
+    in: "query",
+    schema: { type: "string" },
+  });
+for (const [field, max] of [
+  ["page", 1000],
+  ["limit", 100],
+] as const)
+  paths["/admin/assets"].get.parameters.push({
+    name: field,
+    in: "query",
+    schema: { type: "integer", minimum: 1, maximum: max },
+  });
 for (const field of ["from", "to"])
   paths["/admin/overview"].get.parameters.push({
     name: field,

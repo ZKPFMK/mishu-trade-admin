@@ -53,11 +53,20 @@ import {
 import { exportSchema } from "../../../packages/core/src/exports.js";
 import { queueJob, receiveEvent } from "../../../packages/core/src/sync.js";
 import {
+  assetDetail,
+  assetFilters,
+  listAssets,
+} from "../../../packages/core/src/assets.js";
+import {
   batchSchema,
   identifier,
   roles,
   snapshotSchema,
 } from "../../../packages/contracts/src/index.js";
+import {
+  requireCapability,
+  workspaceFor,
+} from "../../../packages/core/src/permissions.js";
 
 export async function createApp(db: pg.Pool, cfg: Config) {
   const api = Fastify({
@@ -156,7 +165,10 @@ export async function createApp(db: pg.Pool, cfg: Config) {
       return { csrf: session.csrf };
     },
   );
-  api.get("/auth/me", async (req) => actor(db, req));
+  api.get("/auth/me", async (req) => {
+    const user = await actor(db, req);
+    return { ...user, workspace: workspaceFor(user.roles) };
+  });
   api.post("/auth/logout", async (req, reply) => {
     const user = await actor(db, req);
     await db.query("DELETE FROM sessions WHERE token_hash=$1", [
@@ -220,9 +232,22 @@ export async function createApp(db: pg.Pool, cfg: Config) {
     (await db.query("SELECT * FROM applications WHERE id=$1", [app])).rows[0];
   api.get("/admin/applications", async (req) => {
     const user = await actor(db, req);
+    requireCapability(user, "system:read");
     return (
       await db.query(
         "SELECT a.*,(SELECT count(*)::int FROM event_inbox WHERE application_id=a.id AND state<>'applied') pending_events,(SELECT count(*)::int FROM event_conflicts WHERE application_id=a.id AND resolved_at IS NULL) conflicts FROM applications a WHERE id=ANY($1) ORDER BY (a.source_mode='mishu') DESC,a.created_at,a.id",
+        [user.scopes],
+      )
+    ).rows.map((a) => ({
+      ...a,
+      management_available: !!(a.management_enabled && cfg.managementEnabled),
+    }));
+  });
+  api.get("/admin/contexts", async (req) => {
+    const user = await actor(db, req);
+    return (
+      await db.query(
+        "SELECT id,name,environment,source_mode,enabled,initialized,applied_cursor,received_cursor,last_applied_at,last_poll_at,source_error,management_enabled FROM applications WHERE id=ANY($1) ORDER BY (source_mode='mishu') DESC,created_at,id",
         [user.scopes],
       )
     ).rows.map((a) => ({
@@ -237,40 +262,58 @@ export async function createApp(db: pg.Pool, cfg: Config) {
   api.get("/admin/case-worklist", async (req) => {
     const { app, user } = await scoped(req),
       { application_id, ...filters } = req.query as any;
+    requireCapability(user, "operations:read");
     return listCases(db, app, user, caseFilters.parse(filters));
   });
   api.get("/admin/cases/:id", async (req) => {
-    const { app } = await scoped(req);
+    const { app, user } = await scoped(req);
+    requireCapability(user, "operations:read");
     return caseDetail(db, app, identifier.parse((req.params as any).id));
   });
   api.get("/admin/finding-worklist", async (req) => {
     const { app, user } = await scoped(req),
       { application_id, ...filters } = req.query as any;
+    requireCapability(user, "reconciliation:read");
     return listFindings(db, app, user, findingFilters.parse(filters));
   });
   api.get("/admin/work-queue", async (req) => {
     const { app, user } = await scoped(req),
       { application_id, ...filters } = req.query as any;
+    requireCapability(user, "operations:read");
     return listQueue(db, app, user, queueFilters.parse(filters));
   });
   api.get("/admin/overview", async (req) => {
-    const { app } = await scoped(req),
+    const { app, user } = await scoped(req),
       q = req.query as any,
       filter = filtersSchema.parse({
         from: q.from || undefined,
         to: q.to || undefined,
       });
+    requireCapability(user, "business:read");
     return overview(db, app, filter);
+  });
+  api.get("/admin/assets", async (req) => {
+    const { app, user } = await scoped(req),
+      { application_id, ...filters } = req.query as any;
+    requireCapability(user, "business:read");
+    return listAssets(db, app, assetFilters.parse(filters));
+  });
+  api.get("/admin/assets/:id", async (req) => {
+    const { app, user } = await scoped(req);
+    requireCapability(user, "business:read");
+    return assetDetail(db, app, identifier.parse((req.params as any).id));
   });
   for (const dataset of datasets)
     api.get("/admin/" + dataset, async (req) => {
-      const { app } = await scoped(req),
+      const { app, user } = await scoped(req),
         { application_id, ...filters } = req.query as any;
+      requireCapability(user, "business:read");
       return listData(db, app, dataset, filtersSchema.parse(filters));
     });
   api.get("/admin/trades/:id", async (req) => {
-    const { app } = await scoped(req),
+    const { app, user } = await scoped(req),
       key = identifier.parse((req.params as any).id);
+    requireCapability(user, "business:read");
     const t = (
       await db.query(
         "SELECT document FROM trade_projections WHERE application_id=$1 AND id=$2",
@@ -302,7 +345,8 @@ export async function createApp(db: pg.Pool, cfg: Config) {
     };
   });
   api.get("/admin/operation-requests", async (req) => {
-    const { app } = await scoped(req);
+    const { app, user } = await scoped(req);
+    requireCapability(user, "operations:read");
     return (
       await db.query(
         "SELECT o.*,r.name requester_name,p.name approver_name,(t.version>=(o.receipt->>'version')::bigint) projection_synced FROM operation_requests o JOIN operators r ON r.id=o.requester_id LEFT JOIN operators p ON p.id=o.approver_id LEFT JOIN trade_projections t ON t.application_id=o.application_id AND t.id=o.trade_id WHERE o.application_id=$1 ORDER BY o.created_at DESC LIMIT 200",
@@ -321,6 +365,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
         })
         .strict()
         .parse(req.body);
+    requireCapability(user, "operations:write");
     return createOperation(
       db,
       cfg,
@@ -338,6 +383,10 @@ export async function createApp(db: pg.Pool, cfg: Config) {
           .object({ reason: z.string().trim().min(5).max(1000) })
           .strict()
           .parse(req.body);
+      requireCapability(
+        user,
+        action === "cancel" ? "operations:write" : "approval:decide",
+      );
       return decideOperation(
         db,
         user,
@@ -347,7 +396,8 @@ export async function createApp(db: pg.Pool, cfg: Config) {
       );
     });
   api.get("/admin/cases", async (req) => {
-    const { app } = await scoped(req);
+    const { app, user } = await scoped(req);
+    requireCapability(user, "operations:read");
     return (
       await db.query(
         "SELECT c.*,o.name owner_name,COALESCE((SELECT jsonb_agg(jsonb_build_object('note',n.note,'at',n.created_at,'actor_id',n.actor_id) ORDER BY n.id) FROM case_notes n WHERE n.case_id=c.id),'[]') notes FROM cases c LEFT JOIN operators o ON o.id=c.owner_id WHERE c.application_id=$1 ORDER BY c.updated_at DESC LIMIT 200",
@@ -483,6 +533,10 @@ export async function createApp(db: pg.Pool, cfg: Config) {
   ] as const) {
     api.get("/admin/" + route, async (req) => {
       const { app, user } = await scoped(req);
+      if (kind === "export") requireCapability(user, "export:read");
+      else if (kind === "reconcile")
+        requireCapability(user, "reconciliation:read");
+      else requireCapability(user, "system:read");
       return (
         await db.query(
           `SELECT * FROM jobs WHERE application_id=$1 AND kind=$2${kind === "export" ? " AND owner_id=$3" : ""} ORDER BY created_at DESC LIMIT 100`,
@@ -498,7 +552,10 @@ export async function createApp(db: pg.Pool, cfg: Config) {
           .parse(req.body),
         app = application_id;
       requireScope(user, app);
-      if (kind !== "export") requireRole(user, "operator", "admin");
+      if (kind === "export") requireCapability(user, "export:create");
+      else if (kind === "reconcile")
+        requireCapability(user, "reconciliation:run");
+      else requireCapability(user, "system:manage");
       const payload =
         kind === "export"
           ? exportSchema.parse(raw)
@@ -531,6 +588,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
     api.post("/admin/exports/:id/" + action, async (req) => {
       const user = await actor(db, req),
         key = identifier.parse((req.params as any).id);
+      requireCapability(user, "export:create");
       return transaction(db, async (sql) => {
         const j = (
           await sql.query(
@@ -579,6 +637,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
           name: z.string().regex(/^[a-z-]+-\d{3,6}\.(xlsx|jsonl\.gz)$/),
         })
         .parse(req.params);
+    requireCapability(user, "export:read");
     const j = (
       await db.query("SELECT * FROM jobs WHERE id=$1 AND kind='export'", [p.id])
     ).rows[0];
@@ -615,7 +674,8 @@ export async function createApp(db: pg.Pool, cfg: Config) {
       .send(fs.createReadStream(file));
   });
   api.get("/admin/reconciliation-findings", async (req) => {
-    const { app } = await scoped(req);
+    const { app, user } = await scoped(req);
+    requireCapability(user, "reconciliation:read");
     return (
       await db.query(
         "SELECT * FROM reconciliation_findings WHERE application_id=$1 ORDER BY updated_at DESC LIMIT 200",
@@ -625,6 +685,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
   });
   api.post("/admin/reconciliation-findings/:id/claim", async (req) => {
     const user = await actor(db, req);
+    requireCapability(user, "operations:write");
     requireRole(user, "operator");
     return transaction(db, async (sql) => {
       const f = (
@@ -645,7 +706,8 @@ export async function createApp(db: pg.Pool, cfg: Config) {
     });
   });
   api.get("/admin/events", async (req) => {
-    const { app } = await scoped(req);
+    const { app, user } = await scoped(req);
+    requireCapability(user, "system:read");
     return (
       await db.query(
         "SELECT seq,event_id,source_cursor,previous_cursor,state,attempts,error,received_at,applied_at FROM event_inbox WHERE application_id=$1 ORDER BY seq DESC LIMIT 200",
@@ -654,7 +716,8 @@ export async function createApp(db: pg.Pool, cfg: Config) {
     ).rows;
   });
   api.get("/admin/event-conflicts", async (req) => {
-    const { app } = await scoped(req);
+    const { app, user } = await scoped(req);
+    requireCapability(user, "system:read");
     return (
       await db.query(
         "SELECT * FROM event_conflicts WHERE application_id=$1 ORDER BY created_at DESC LIMIT 100",
@@ -664,6 +727,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
   });
   api.post("/admin/event-conflicts/:id/resolve", async (req) => {
     const user = await actor(db, req);
+    requireCapability(user, "system:manage");
     requireRole(user, "operator", "admin");
     const key = z
         .string()
@@ -704,6 +768,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
   });
   api.post("/admin/events/:id/retry", async (req) => {
     const { app, user } = await scoped(req);
+    requireCapability(user, "system:manage");
     requireRole(user, "operator", "admin");
     const key = identifier.parse((req.params as any).id);
     const r = await db.query(
@@ -717,11 +782,12 @@ export async function createApp(db: pg.Pool, cfg: Config) {
   api.get("/admin/audit-events", async (req) => {
     const { app, user } = await scoped(req),
       { application_id, ...filters } = req.query as any;
+    requireCapability(user, "audit:read");
     return listAudit(db, app, user, auditFilters.parse(filters));
   });
   api.get("/admin/operators", async (req) => {
     const user = await actor(db, req);
-    requireRole(user, "admin");
+    requireCapability(user, "system:manage");
     return (
       await db.query(
         "SELECT o.id,o.email,o.name,o.roles,o.enabled,COALESCE(array_agg(s.application_id) FILTER (WHERE s.application_id IS NOT NULL),'{}') scopes FROM operators o LEFT JOIN operator_scopes s ON s.operator_id=o.id WHERE NOT EXISTS (SELECT 1 FROM operator_scopes hidden WHERE hidden.operator_id=o.id AND NOT (hidden.application_id=ANY($1))) AND EXISTS (SELECT 1 FROM operator_scopes visible WHERE visible.operator_id=o.id AND visible.application_id=ANY($1)) GROUP BY o.id ORDER BY o.created_at",
@@ -731,7 +797,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
   });
   api.post("/admin/operators", async (req) => {
     const user = await actor(db, req);
-    requireRole(user, "admin");
+    requireCapability(user, "system:manage");
     const b = z
       .object({
         email: z.email().max(254),
@@ -769,7 +835,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
   });
   api.post("/admin/operators/:id/access", async (req) => {
     const user = await actor(db, req);
-    requireRole(user, "admin");
+    requireCapability(user, "system:manage");
     const key = identifier.parse((req.params as any).id);
     insist(key !== user.id, 403, "self_access_change_forbidden");
     const b = z.object({ enabled: z.boolean() }).strict().parse(req.body);
@@ -793,7 +859,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
   });
   api.get("/admin/credentials", async (req) => {
     const { app, user } = await scoped(req);
-    requireRole(user, "admin");
+    requireCapability(user, "system:manage");
     return (
       await db.query(
         "SELECT id,label,permissions,revoked_at,created_at FROM service_credentials WHERE application_id=$1 ORDER BY created_at DESC",
@@ -803,7 +869,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
   });
   api.post("/admin/credentials", async (req) => {
     const user = await actor(db, req);
-    requireRole(user, "admin");
+    requireCapability(user, "system:manage");
     const b = z
       .object({
         application_id: identifier,
@@ -830,7 +896,7 @@ export async function createApp(db: pg.Pool, cfg: Config) {
   });
   api.post("/admin/credentials/:id/revoke", async (req) => {
     const user = await actor(db, req);
-    requireRole(user, "admin");
+    requireCapability(user, "system:manage");
     return transaction(db, async (sql) => {
       const c = (
         await sql.query(
